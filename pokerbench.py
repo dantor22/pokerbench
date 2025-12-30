@@ -41,8 +41,9 @@ try:
     from litellm import completion, completion_cost
     import matplotlib.pyplot as plt
     import numpy as np
+    from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 except ImportError:
-    print("Missing dependencies. Please run: pip install pokerkit litellm matplotlib numpy")
+    print("Missing dependencies. Please run: pip install pokerkit litellm matplotlib numpy tenacity")
     exit(1)
 
 # Try importing tqdm for progress bars, define dummy if missing
@@ -147,11 +148,13 @@ class PokerBenchRunner:
         self.player_histories = {name: deque(maxlen=self.memory_size) for name in self.all_player_names}
         self.current_hand_history_text = [] 
         self.hand_profits = {name: [] for name in self.all_player_names} 
+        self.current_hand_thoughts = {name: [] for name in self.all_player_names}
         self.stats = {
             name: {
                 "wins": 0, 
                 "hands_played": 0,
                 "vpip_count": 0,
+                "decision_count": 0,
                 "final_stack": 0,
                 "total_cost": 0.0
             } for name in self.all_player_names
@@ -185,6 +188,16 @@ class PokerBenchRunner:
             else:
                 flat_cards.append(item)
         return [str(c) for c in flat_cards]
+
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        retry=retry_if_exception_type(Exception),
+        reraise=True
+    )
+    def _make_api_call(self, completion_args):
+        """Wrapper for litellm.completion with retry logic."""
+        return completion(**completion_args)
 
     def get_llm_decision(self, model_config, state, model_seat_idx, current_hand_idx, rotation_offset):
         pk_idx = (model_seat_idx - rotation_offset) % len(self.models)
@@ -222,6 +235,9 @@ class PokerBenchRunner:
         my_history = self.player_histories[p_name]
         past_hands_context = "\n\n".join(my_history) if my_history else "No previous hands recorded."
         current_progress = "\n".join(self.current_hand_history_text)
+        
+        my_thoughts = self.current_hand_thoughts[p_name]
+        current_hand_thoughts_text = "\n".join(my_thoughts) if my_thoughts else "No previous thoughts this hand."
 
         base_prompt = f"""
 === TOURNAMENT STATUS ===
@@ -231,6 +247,8 @@ Active Players: {len(self.models)}
 {past_hands_context}
 === CURRENT HAND LOG ===
 {current_progress}
+=== YOUR PREVIOUS THOUGHTS THIS HAND ===
+{current_hand_thoughts_text}
 === YOUR STATE ===
 Name: {p_name} | Position: {my_position_label} | Stack: {my_stack}
 Cards: [{hand_str}] | Board: [{board_str}]
@@ -256,25 +274,28 @@ Decide your action.
                 "drop_params": True
             }
 
-            if model_config['reasoning_effort']:
-                completion_args['reasoning_effort'] = model_config['reasoning_effort']
+            # Only include reasoning_effort if it's explicitly set in the config
+            if model_config.get('reasoning_effort') is not None:
+                completion_args["reasoning_effort"] = model_config['reasoning_effort']
 
-            response = completion(**completion_args)
+            response = self._make_api_call(completion_args)
             
             # --- LOG RESPONSE ---
             self.log_debug_data(p_name, "RESPONSE", response)
-
-            # Track Cost
-            try:
+            
+            # --- TRACK COST ---
+            try :
                 cost = completion_cost(completion_response=response)
                 self.stats[p_name]["total_cost"] += cost
-            except Exception as e:
-                if self.debug: print(f"Cost calculation failed for {p_name}: {e}")
-            
+                self.stats[p_name]["decision_count"] += 1
+            except Exception:
+                self.log_debug_data(p_name, "COST_ERROR", str(e))
+                pass # Ignore cost calculation errors to avoid crashing game
+
             return json.loads(response.choices[0].message.content)
         except Exception as e:
             self.log_debug_data(p_name, "ERROR", str(e))
-            return {"action": "fold", "thought_process": f"API Error: {str(e)}", "amount": 0}
+            raise e
 
     def run(self):
         automations = (
@@ -309,6 +330,9 @@ Decide your action.
             active_player_names = {m['name'] for m in self.models}
             
             self.current_hand_history_text = [f"Hand #{hand_idx}:"]
+            # Reset thoughts for the new hand
+            for name in self.all_player_names:
+                self.current_hand_thoughts[name] = []
             
             hand_record = {
                 "hand_number": hand_idx,
@@ -344,74 +368,82 @@ Decide your action.
 
             # --- Game Loop ---
             last_street_idx = -1
-            while state.status:
-                if state.street_index != last_street_idx:
-                    last_street_idx = state.street_index
-                    street_name = STREET_NAMES.get(last_street_idx, f"STREET {last_street_idx}")
-                    board_cards = self.format_cards(state.board_cards)
-                    hand_record["board"] = board_cards 
-                    
-                    log_msg = f"[{street_name}] Board: {' '.join(board_cards)}"
-                    self.current_hand_history_text.append(log_msg)
-                    
-                    hand_record["actions"].append({
-                        "type": "street_event",
-                        "street": street_name,
-                        "cards": board_cards
-                    })
-
-                if state.actor_index is not None:
-                    pk_actor_idx = state.actor_index
-                    model_seat_idx = (pk_actor_idx + rotation_offset) % len(self.models)
-                    p_name = self.models[model_seat_idx]['name']
-                    
-                    decision = self.get_llm_decision(self.models[model_seat_idx], state, model_seat_idx, hand_idx, rotation_offset)
-                    action = str(decision.get("action", "fold")).lower()
-                    amount = int(decision.get("amount", 0)) if decision.get("amount") else 0
-                    thought = decision.get("thought_process", "No thought provided")
-
-                    try:
-                        valid_move = True
-                        if action == "fold":
-                            state.fold()
-                            txt_action = "folded"
-                            active_player_names.discard(p_name)
-                        elif action in ["check", "call"]:
-                            call_amt = state.checking_or_calling_amount
-                            state.check_or_call()
-                            txt_action = f"checked/called {call_amt}"
-                            if state.street_index == 0: hand_vpip[p_name] = True
-                        elif action in ["bet", "raise"]:
-                            min_r = state.min_completion_betting_or_raising_to_amount
-                            actual_amt = max(amount, min_r) if min_r else amount
-                            state.complete_bet_or_raise_to(actual_amt)
-                            txt_action = f"raised to {actual_amt}"
-                            if state.street_index == 0: hand_vpip[p_name] = True
-                        else:
-                            state.fold()
-                            txt_action = "folded (invalid action)"
-                            valid_move = False
-
-                        self.current_hand_history_text.append(f"  - {p_name} {txt_action}")
+            try:
+                while state.status:
+                    if state.street_index != last_street_idx:
+                        last_street_idx = state.street_index
+                        street_name = STREET_NAMES.get(last_street_idx, f"STREET {last_street_idx}")
+                        board_cards = self.format_cards(state.board_cards)
+                        hand_record["board"] = board_cards 
+                        
+                        log_msg = f"[{street_name}] Board: {' '.join(board_cards)}"
+                        self.current_hand_history_text.append(log_msg)
+                        
                         hand_record["actions"].append({
-                            "type": "player_action",
-                            "player": p_name,
-                            "action": action,
-                            "amount": amount,
-                            "pot_before": sum(state.pot_amounts),
-                            "thought": thought,
-                            "valid": valid_move
+                            "type": "street_event",
+                            "street": street_name,
+                            "cards": board_cards
                         })
 
-                    except Exception as e:
-                        if self.debug: self.log_debug_data(p_name, "EXEC_ERROR", str(e))
-                        state.fold()
-                        hand_record["actions"].append({
-                            "type": "error",
-                            "player": p_name,
-                            "message": str(e)
-                        })
-                else: continue
+                    if state.actor_index is not None:
+                        pk_actor_idx = state.actor_index
+                        model_seat_idx = (pk_actor_idx + rotation_offset) % len(self.models)
+                        p_name = self.models[model_seat_idx]['name']
+                        
+                        decision = self.get_llm_decision(self.models[model_seat_idx], state, model_seat_idx, hand_idx, rotation_offset)
+                        action = str(decision.get("action", "fold")).lower()
+                        amount = int(decision.get("amount", 0)) if decision.get("amount") else 0
+                        thought = decision.get("thought_process", "No thought provided")
+
+                        try:
+                            valid_move = True
+                            if action == "fold":
+                                state.fold()
+                                txt_action = "folded"
+                                active_player_names.discard(p_name)
+                            elif action in ["check", "call"]:
+                                call_amt = state.checking_or_calling_amount
+                                state.check_or_call()
+                                txt_action = f"checked/called {call_amt}"
+                                if state.street_index == 0: hand_vpip[p_name] = True
+                            elif action in ["bet", "raise"]:
+                                min_r = state.min_completion_betting_or_raising_to_amount
+                                actual_amt = max(amount, min_r) if min_r else amount
+                                state.complete_bet_or_raise_to(actual_amt)
+                                txt_action = f"raised to {actual_amt}"
+                                if state.street_index == 0: hand_vpip[p_name] = True
+                            else:
+                                state.fold()
+                                txt_action = "folded (invalid action)"
+                                valid_move = False
+
+                            self.current_hand_history_text.append(f"  - {p_name} {txt_action}")
+                            hand_record["actions"].append({
+                                "type": "player_action",
+                                "player": p_name,
+                                "action": action,
+                                "amount": amount,
+                                "pot_before": sum(state.pot_amounts),
+                                "thought": thought,
+                                "valid": valid_move
+                            })
+
+                            # Record thought for this hand
+                            current_street = STREET_NAMES.get(state.street_index, f"STREET {state.street_index}")
+                            self.current_hand_thoughts[p_name].append(f"[{current_street}] {thought}")
+
+                        except Exception as e:
+                            if self.debug: self.log_debug_data(p_name, "EXEC_ERROR", str(e))
+                            state.fold()
+                            hand_record["actions"].append({
+                                "type": "error",
+                                "player": p_name,
+                                "message": str(e)
+                            })
+                    else: continue
+            except Exception as e:
+                self.progress(f"Game Terminated Early: {str(e)}")
+                break
 
             # --- Payoffs ---
             final_pk_stacks = list(state.stacks)
@@ -597,35 +629,46 @@ if __name__ == "__main__":
 
     # Ranking
     rank_data = []
+    # Use keys from the first game's stats to ensure we get all players
+    # even if they might have been eliminated (keys should exist for all)
     player_names = all_stats[0].keys()
 
     for name in player_names:
         total_profit = 0
         total_wins = 0
         total_hands = 0
+        total_cost = 0.0
+        total_decisions = 0
+        
         for i in range(len(all_stats)):
             final_stack = all_stats[i][name].get('final_stack', 0)
             total_profit += (final_stack - 10000)
             total_wins += all_stats[i][name]['wins']
             total_hands += all_stats[i][name]['hands_played']
+            total_cost += all_stats[i][name].get('total_cost', 0.0)
+            total_decisions += all_stats[i][name].get('decision_count', 0)
 
         avg_profit = total_profit / len(all_stats)
         win_rate = (total_wins / total_hands * 100) if total_hands > 0 else 0
+        total_cost_val = total_cost
+        avg_cost_per_turn = total_cost / total_decisions if total_decisions > 0 else 0
+        
         rank_data.append({
             "name": name, 
             "avg_profit": round(avg_profit, 2), 
             "win_rate": round(win_rate, 2),
             "total_hands": total_hands,
-            "cost": sum(g[name].get('total_cost', 0) for g in all_stats) / len(all_stats)
+            "total_cost": total_cost_val,
+            "avg_cost_per_turn": avg_cost_per_turn
         })
 
     rank_data.sort(key=lambda x: x['avg_profit'], reverse=True)
 
     print(f"\n{'='*35} PLAYER RANKING {'='*35}")
-    print(f"{'Rank':<4} | {'Player':<15} | {'Avg Profit ($)':<15} | {'Win Rate':<10} | {'Cost ($)':<10}")
-    print("-" * 75)
+    print(f"{'Rank':<4} | {'Player':<15} | {'Avg Profit ($)':<15} | {'Win Rate':<10} | {'Total Cost ($)':<14} | {'Avg Cost/Turn':<12}")
+    print("-" * 90)
     for i, p in enumerate(rank_data):
-        print(f"{i+1:<4} | {p['name']:<15} | {p['avg_profit']:+,.0f}".ljust(38) + f" | {p['win_rate']:>5.1f}%   | ${p['cost']:>8.4f}")
+        print(f"{i+1:<4} | {p['name']:<15} | {p['avg_profit']:+,.0f}".ljust(38) + f" | {p['win_rate']:5.1f}%   | ${p['total_cost']:.4f}".ljust(25) + f" | ${p['avg_cost_per_turn']:.4f}")
 
     if len(all_histories) > 0:
         generate_results_graph(all_histories)
