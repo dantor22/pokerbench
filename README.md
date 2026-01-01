@@ -1,5 +1,7 @@
 # PokerBench: A Longitudinal Multi-Agent Framework for Evaluating Strategic Coherence and Game Theory Optimal (GTO) Adherence in Large Language Models
 
+![](5games.png)
+
 ## Introduction: The Imperative for Dynamic Evaluation in Imperfect-Information Domains
 
 The evaluation of Large Language Models (LLMs) has historically relied on static benchmarks—datasets of fixed questions and answers such as MMLU or GSM8K—that assess knowledge retrieval and discrete reasoning in isolation. However, the emergence of "agentic" workflows, where models must execute sequential decisions over extended time horizons, has exposed significant fragility in these systems. The recent introduction of *VendingBench* demonstrated that while models may excel at singular tasks, they frequently suffer from "context rot" and strategic drift when tasked with maintaining a coherent business operation over simulated weeks [cite: 1, 2]. Models that appear robust in single-turn interactions often "derail" in long-context environments, forgetting inventory levels or hallucinating external events [cite: 2].
