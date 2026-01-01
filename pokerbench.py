@@ -68,13 +68,13 @@ STREET_NAMES = {0: "PRE-FLOP", 1: "FLOP", 2: "TURN", 3: "RIVER"}
 
 SYSTEM_PROMPT_TEMPLATE = """
 You are a world-class professional poker player competing in the PokerBench High Roller Tournament. 
-Your goal is to maximize your stack size over {total_hands} hands. You are playing No-Limit Texas Hold'em.
+Your goal is to maximize your stack size over {total_hands} hands. You are playing 50/100 No-Limit Texas Hold'em.
 
 OUTPUT FORMAT:
 You must output a JSON object adhering to the provided schema.
 - 'action': One of "fold", "check", "call", "bet", "raise".
 - 'amount': The total integer amount of chips to put in the pot (including current street bets). Use 0 for fold/check.
-- 'thought_process': A concise explanation of your strategic reasoning.
+- 'thought_process': An explanation of your strategic reasoning.
 """
 
 POKER_DECISION_SCHEMA = {
@@ -105,6 +105,19 @@ POKER_DECISION_SCHEMA = {
     }
 }
 
+def _log_retry(retry_state):
+    """Callback for tenacity to log retry attempts."""
+    self_obj = retry_state.args[0]
+    model_name = retry_state.args[1]
+    error = retry_state.outcome.exception()
+    attempt = retry_state.attempt_number
+    
+    msg = f"API Error: {error}"
+    self_obj.log_debug_data(model_name, f"RETRY_{attempt}", msg)
+    
+    # Also notify console
+    self_obj.progress(f"RETRYING {model_name} (Attempt {attempt+1}/5) due to error: {error}")
+
 class PokerBenchRunner:
     def __init__(self, game_id: str, num_hands: int, memory_size: int, temperature: float, debug: bool = False):
         self.game_id = game_id
@@ -121,7 +134,7 @@ class PokerBenchRunner:
             {"seat": 0, "name": "Minni", "model_id": "gpt-5-mini", "reasoning_effort": "high"},
             {"seat": 1, "name": "Flash", "model_id": "gemini/gemini-3-flash-preview", "reasoning_effort": "high"},
             {"seat": 2, "name": "Pro", "model_id": "gemini/gemini-3-pro-preview", "reasoning_effort": "high"},
-            {"seat": 3, "name": "FiveTwo", "model_id": "gpt-5.2", "reasoning_effort": "medium"},
+            {"seat": 3, "name": "FiveTwo", "model_id": "gpt-5.2", "reasoning_effort": "high"},
             {"seat": 4, "name": "Claude", "model_id": "claude-opus-4-5-20251101", "reasoning_effort": "medium"},
             {"seat": 5, "name": "Elon", "model_id": "xai/grok-4-1-fast-reasoning"},
         ]
@@ -156,7 +169,8 @@ class PokerBenchRunner:
                 "vpip_count": 0,
                 "decision_count": 0,
                 "final_stack": 0,
-                "total_cost": 0.0
+                "total_cost": 0.0,
+                "total_reasoning_tokens": 0
             } for name in self.all_player_names
         }
 
@@ -193,9 +207,10 @@ class PokerBenchRunner:
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=60),
         retry=retry_if_exception_type(Exception),
+        before_sleep=_log_retry,
         reraise=True
     )
-    def _make_api_call(self, completion_args):
+    def _make_api_call(self, model_name, completion_args):
         """Wrapper for litellm.completion with retry logic."""
         return completion(**completion_args)
 
@@ -218,6 +233,8 @@ class PokerBenchRunner:
         pos_labels = [""] * num_players
         if num_players == 2:
             pos_labels[0], pos_labels[1] = "Button (SB)", "Big Blind"
+        elif num_players == 6:
+            pos_labels = ["Button", "Small Blind", "Big Blind", "UTG", "Middle", "Cutoff"]
         else:
             pos_labels[0], pos_labels[1], pos_labels[2] = "Button", "Small Blind", "Big Blind"
             for i in range(3, num_players):
@@ -252,7 +269,7 @@ Active Players: {len(self.models)}
 === YOUR STATE ===
 Name: {p_name} | Position: {my_position_label} | Stack: {my_stack}
 Cards: [{hand_str}] | Board: [{board_str}]
-Pot: {sum(state.pot_amounts)} | To Call: {state.checking_or_calling_amount}
+Pot: {sum(state.pot_amounts) + sum(state.bets)} | To Call: {state.checking_or_calling_amount}
 Min Raise To: {min_raise_str}
 Opponents: {" | ".join(opponent_info)}
 
@@ -278,7 +295,7 @@ Decide your action.
             if model_config.get('reasoning_effort') is not None:
                 completion_args["reasoning_effort"] = model_config['reasoning_effort']
 
-            response = self._make_api_call(completion_args)
+            response = self._make_api_call(p_name, completion_args)
             
             # --- LOG RESPONSE ---
             self.log_debug_data(p_name, "RESPONSE", response)
@@ -288,9 +305,23 @@ Decide your action.
                 cost = completion_cost(completion_response=response)
                 self.stats[p_name]["total_cost"] += cost
                 self.stats[p_name]["decision_count"] += 1
-            except Exception:
-                self.log_debug_data(p_name, "COST_ERROR", str(e))
-                pass # Ignore cost calculation errors to avoid crashing game
+                
+                # Track reasoning tokens
+                usage = getattr(response, "usage", None)
+                if usage:
+                    r_tokens = 0
+                    # Try OpenAI/LiteLLM standard: usage.completion_tokens_details.reasoning_tokens
+                    if hasattr(usage, "completion_tokens_details") and usage.completion_tokens_details:
+                        r_tokens = getattr(usage.completion_tokens_details, "reasoning_tokens", 0)
+                    # Fallback for some providers that might put it directly in usage
+                    elif hasattr(usage, "reasoning_tokens"):
+                        r_tokens = usage.reasoning_tokens
+                    
+                    self.stats[p_name]["total_reasoning_tokens"] += (r_tokens or 0)
+                    
+            except Exception as e:
+                self.log_debug_data(p_name, "STATS_TRACKING_ERROR", str(e))
+                pass # Ignore stats calculation errors to avoid crashing game
 
             return json.loads(response.choices[0].message.content)
         except Exception as e:
@@ -396,34 +427,58 @@ Decide your action.
                         thought = decision.get("thought_process", "No thought provided")
 
                         try:
+                            # Capture pot state BEFORE action for accurate logging
+                            # Include current street bets in "Pot Before" so it's not 0 pre-flop
+                            pot_before_action = sum(state.pot_amounts) + sum(state.bets)
+
                             valid_move = True
+                            final_amount_logged = 0
+                            chips_added = 0
+
                             if action == "fold":
                                 state.fold()
                                 txt_action = "folded"
                                 active_player_names.discard(p_name)
+                                final_amount_logged = 0
+                                chips_added = 0
                             elif action in ["check", "call"]:
                                 call_amt = state.checking_or_calling_amount
+                                prev_bet = state.bets[pk_actor_idx]
                                 state.check_or_call()
                                 txt_action = f"checked/called {call_amt}"
                                 if state.street_index == 0: hand_vpip[p_name] = True
+                                
+                                chips_added = call_amt
+                                # Standardize amount: if moving chips, show Total Street Investment
+                                if call_amt > 0:
+                                    final_amount_logged = prev_bet + call_amt
+                                else:
+                                    final_amount_logged = 0 # Check
                             elif action in ["bet", "raise"]:
                                 min_r = state.min_completion_betting_or_raising_to_amount
                                 actual_amt = max(amount, min_r) if min_r else amount
+                                # Calculate DELTA (chips added) for strict parsing
+                                chips_added = actual_amt - state.bets[pk_actor_idx]
+                                
                                 state.complete_bet_or_raise_to(actual_amt)
                                 txt_action = f"raised to {actual_amt}"
                                 if state.street_index == 0: hand_vpip[p_name] = True
+                                final_amount_logged = actual_amt # Narrative "Raise To" Amount
                             else:
                                 state.fold()
                                 txt_action = "folded (invalid action)"
                                 valid_move = False
+                                final_amount_logged = 0
+                                chips_added = 0
 
                             self.current_hand_history_text.append(f"  - {p_name} {txt_action}")
                             hand_record["actions"].append({
                                 "type": "player_action",
                                 "player": p_name,
                                 "action": action,
-                                "amount": amount,
-                                "pot_before": sum(state.pot_amounts),
+                                "amount": final_amount_logged,
+                                "chips_added": chips_added,
+                                "pot_before": pot_before_action,
                                 "thought": thought,
                                 "valid": valid_move
                             })
@@ -588,10 +643,10 @@ def save_summary(all_stats, all_histories, rank_data):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--hands", type=int, default=10)
+    parser.add_argument("--hands", type=int, default=5)
     parser.add_argument("--games", type=int, default=1)
-    parser.add_argument("--memory", type=int, default=3)
-    parser.add_argument("--temp", type=float, default=0.5)
+    parser.add_argument("--memory", type=int, default=150)
+    parser.add_argument("--temp", type=float, default=1)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
@@ -639,6 +694,7 @@ if __name__ == "__main__":
         total_hands = 0
         total_cost = 0.0
         total_decisions = 0
+        total_reasoning_tokens = 0
         
         for i in range(len(all_stats)):
             final_stack = all_stats[i][name].get('final_stack', 0)
@@ -647,11 +703,12 @@ if __name__ == "__main__":
             total_hands += all_stats[i][name]['hands_played']
             total_cost += all_stats[i][name].get('total_cost', 0.0)
             total_decisions += all_stats[i][name].get('decision_count', 0)
+            total_reasoning_tokens += all_stats[i][name].get('total_reasoning_tokens', 0)
 
         avg_profit = total_profit / len(all_stats)
         win_rate = (total_wins / total_hands * 100) if total_hands > 0 else 0
         total_cost_val = total_cost
-        avg_cost_per_turn = total_cost / total_decisions if total_decisions > 0 else 0
+        avg_cost_per_decision = total_cost / total_decisions if total_decisions > 0 else 0
         
         rank_data.append({
             "name": name, 
@@ -659,16 +716,17 @@ if __name__ == "__main__":
             "win_rate": round(win_rate, 2),
             "total_hands": total_hands,
             "total_cost": total_cost_val,
-            "avg_cost_per_turn": avg_cost_per_turn
+            "avg_cost_per_decision": avg_cost_per_decision,
+            "avg_reasoning_tokens": total_reasoning_tokens / total_decisions if total_decisions > 0 else 0
         })
 
     rank_data.sort(key=lambda x: x['avg_profit'], reverse=True)
 
     print(f"\n{'='*35} PLAYER RANKING {'='*35}")
-    print(f"{'Rank':<4} | {'Player':<15} | {'Avg Profit ($)':<15} | {'Win Rate':<10} | {'Total Cost ($)':<14} | {'Avg Cost/Turn':<12}")
-    print("-" * 90)
+    print(f"{'Rank':<4} | {'Player':<15} | {'Avg Profit ($)':<15} | {'Win Rate':<10} | {'Total Cost ($)':<14} | {'Avg Cost/Dec':<12} | {'Avg Reason Tok':<12}")
+    print("-" * 110)
     for i, p in enumerate(rank_data):
-        print(f"{i+1:<4} | {p['name']:<15} | {p['avg_profit']:+,.0f}".ljust(38) + f" | {p['win_rate']:5.1f}%   | ${p['total_cost']:.4f}".ljust(25) + f" | ${p['avg_cost_per_turn']:.4f}")
+        print(f"{i+1:<4} | {p['name']:<15} | {p['avg_profit']:+,.0f}".ljust(38) + f" | {p['win_rate']:5.1f}%   | ${p['total_cost']:.4f}".ljust(25) + f" | ${p['avg_cost_per_decision']:.4f}".ljust(15) + f" | {p['avg_reasoning_tokens']:,.0f}")
 
     if len(all_histories) > 0:
         generate_results_graph(all_histories)
