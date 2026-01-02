@@ -11,11 +11,9 @@ Key Features:
 - Comprehensive game logging and debug capabilities.
 - Automated statistics collection and visualizations.
 
-It runs about 1.25 hands/minute/game with the provided 4 player configuration. This cannot
-be accelarated on an intra-game basis as hands must be executed serially. However, games
-can be run in parallel. Example run command:
+Example run command:
 
-python3 pokerbench_parallel.py --hands 150 --games 5 --memory 150 --temp 1
+python3 pokerbench_parallel.py --hands 150 --games 5
 
 Provide --debug to directly inspect LLM requests/responses.
 
@@ -377,8 +375,19 @@ Decide your action.
 
             # --- PokerKit State ---
             is_heads_up = (len(self.models) == 2)
-            pk_stacks = list(self.stacks) if is_heads_up else self.stacks[1:] + self.stacks[:1]
-            rotation_offset = 0 if is_heads_up else 1
+            
+            # UNIFIED LOGIC FIX:
+            # Always rotate so the Dealer (self.models[0]) is at the END of the list passed to PokerKit.
+            # In Ring: P0(D), P1(SB), P2(BB) -> [P1, P2, P0]. Dealer is last.
+            # In HU: P0(D/SB), P1(BB) -> [P1, P0]. Dealer is last.
+            # result: P0 is Index 1. Index 1 in HU is SB?
+            # Test confirmed: Index 1 is SB in HU [BB, SB] list logic?
+            # Actually test confirmed: If list is [P1, P0]. Index 0=P1, Index 1=P0.
+            # Bets=[100, 50]. Index 1 posted 50. Index 1 is SB. Index 1 acts first.
+            # So P0 acts first. Correct.
+            
+            pk_stacks = self.stacks[1:] + self.stacks[:1]
+            rotation_offset = 1
             blind_config = (50, 100)
 
             if any(s <= 0 for s in pk_stacks): break
@@ -499,10 +508,31 @@ Decide your action.
             except Exception as e:
                 self.progress(f"Game Terminated Early: {str(e)}")
                 break
-
+            # --- Final Board Check (Fix for All-In Runouts) ---
+            # If state finished with board cards not yet logged (e.g. all-in runout), log them now.
+            if state.street_index != last_street_idx or self.format_cards(state.board_cards) != hand_record.get("board", []):
+                final_board = self.format_cards(state.board_cards)
+                if len(final_board) > len(hand_record.get("board", [])):
+                    hand_record["board"] = final_board
+                    log_msg = f"[RUNOUT] Final Board: {' '.join(final_board)}"
+                    self.current_hand_history_text.append(log_msg)
+                    hand_record["actions"].append({
+                        "type": "street_event",
+                        "street": "RUNOUT",
+                        "cards": final_board
+                    })
             # --- Payoffs ---
             final_pk_stacks = list(state.stacks)
-            self.stacks = final_pk_stacks if is_heads_up else final_pk_stacks[-1:] + final_pk_stacks[:-1]
+            
+            # Robust Stack Mapping (Fix for Stack Persistence)
+            new_stacks_map = {}
+            for pk_i in range(len(self.models)):
+                # pk_i maps to model_seat_idx via rotation
+                model_seat_idx = (pk_i + rotation_offset) % len(self.models)
+                new_stacks_map[model_seat_idx] = final_pk_stacks[pk_i]
+
+            # Rebuild self.stacks in order of self.models (0..N)
+            self.stacks = [new_stacks_map[i] for i in range(len(self.models))]
 
             for i in range(len(self.models)):
                 model_seat_idx = (i + rotation_offset) % len(self.models)
