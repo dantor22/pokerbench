@@ -172,10 +172,125 @@ class PokerBenchRunner:
             } for name in self.all_player_names
         }
 
-        # Initialize Debug Log if enabled
         if self.debug:
             with open(self.debug_filename, "w", encoding="utf-8") as f:
                 f.write(f"--- POKER DEBUG LOG STARTED (Game: {self.game_id}) ---\n")
+
+    @classmethod
+    def from_json(cls, data: Dict[str, Any], target_hands: int, memory_size: int, temperature: float, debug: bool = False):
+        """Reconstructs a PokerBenchRunner from a saved JSON game log."""
+        game_id = data["game_id"]
+        # Use target hands if provided, else use existing config hands
+        num_hands = max(target_hands, data["config"]["hands"])
+        
+        # Create instance (we'll overwrite its state)
+        instance = cls(game_id, num_hands, memory_size, temperature, debug)
+        
+        # Load hand history
+        instance.game_log = data
+        instance.game_log["config"]["hands"] = num_hands
+        
+        # Identify all players from the log (including eliminated ones)
+        instance.all_player_names = data["players"]
+        
+        # Reconstruct standard_models mapping from the instance
+        standard_models = {m['name']: m for m in instance.models}
+
+        # Identify the last hand
+        if not data["hands"]:
+            return instance # Empty game, just start fresh
+
+        last_hand = data["hands"][-1]
+        last_dealer = last_hand["dealer"]
+        
+        # Reconstruct stacks from last hand's results
+        pre_stacks = last_hand["pre_hand_stacks"]
+        results = {r["player"]: r["net_gain"] for r in last_hand["results"]}
+        
+        current_stacks = {}
+        for name in instance.all_player_names:
+            start_val = pre_stacks.get(name, 0)
+            gain = results.get(name, 0)
+            current_stacks[name] = max(0, start_val + gain)
+        
+        # Initialize stats and histories from the log
+        instance.stack_history = {name: [instance.initial_stack] for name in instance.all_player_names}
+        instance.stats = {name: {
+                "wins": 0, "hands_played": 0, "vpip_count": 0, "decision_count": 0,
+                "final_stack": 0, "total_cost": 0.0, "total_reasoning_tokens": 0
+            } for name in instance.all_player_names
+        }
+        
+        # Re-derive stats by iterating over all hands in log
+        for h in data["hands"]:
+            # results
+            for r in h["results"]:
+                p = r["player"]
+                if p not in instance.stats: continue
+                if r.get("winner"): instance.stats[p]["wins"] += 1
+                instance.stats[p]["hands_played"] += 1
+            
+            # vpip and actions
+            for act in h["actions"]:
+                if act["type"] == "player_action":
+                    p = act["player"]
+                    if p in instance.stats:
+                        instance.stats[p]["decision_count"] += 1
+                        instance.stats[p]["total_cost"] += (act.get("cost") or 0.0)
+                        instance.stats[p]["total_reasoning_tokens"] += (act.get("reasoning_tokens") or 0)
+
+            # Reconstruct stack history properly
+            for r in h["results"]:
+                p = r["player"]
+                if p in instance.stack_history:
+                    new_s = h["pre_hand_stacks"].get(p, 0) + r["net_gain"]
+                    instance.stack_history[p].append(new_s)
+
+            # Reconstruct player_histories
+            public_log = []
+            current_hand_idx = h["hand_number"]
+            public_log.append(f"Hand #{current_hand_idx}:")
+            for act in h["actions"]:
+                if act["type"] == "street_event":
+                    public_log.append(f"[{act['street']}] Board: {' '.join(act['cards'])}")
+                elif act["type"] == "player_action":
+                    txt = "folded" if act["action"] == "fold" else f"{act['action']}ed {act['amount']}"
+                    public_log.append(f"  - {act['player']} {txt}")
+            
+            log_text = "\n".join(public_log)
+            for p_name in instance.all_player_names:
+                cards = h["hole_cards"].get(p_name, [])
+                cards_str = " ".join(cards)
+                entry = f"Hand #{current_hand_idx} | Held: [{cards_str}]\n{log_text}"
+                instance.player_histories[p_name].append(entry)
+
+        # Correctly reconstruct surviving players and their rotation
+        all_players = data["players"]
+        last_dealer = last_hand["dealer"]
+        surviving_names = [p for p in all_players if current_stacks[p] > 0]
+
+        # Find who should be the dealer for the NEXT hand
+        # This is the next person in survivors after the last_dealer
+        try:
+            d_idx = all_players.index(last_dealer)
+            next_dealer_name = None
+            for i in range(1, len(all_players) + 1):
+                cand = all_players[(d_idx + i) % len(all_players)]
+                if cand in surviving_names:
+                    next_dealer_name = cand
+                    break
+        except ValueError:
+            next_dealer_name = surviving_names[0]
+        
+        # Order survivors so the new dealer is at index 0
+        s_idx = surviving_names.index(next_dealer_name)
+        ordered_survivors = surviving_names[s_idx:] + surviving_names[0:s_idx]
+        
+        instance.models = [standard_models.get(name, {"name": name, "model_id": "gpt-4o"}) for name in ordered_survivors]
+        instance.stacks = [current_stacks[m['name']] for m in instance.models]
+        instance.resumed_skip_rotation = True 
+
+        return instance
 
     def log_debug_data(self, model_name: str, label: str, data: Any):
         """Writes raw prompts and responses to a text file for inspection."""
@@ -299,6 +414,8 @@ Decide your action.
             self.log_debug_data(p_name, "RESPONSE", response)
             
             # --- TRACK COST ---
+            cost = 0.0
+            r_tokens = 0
             try :
                 cost = completion_cost(completion_response=response)
                 self.stats[p_name]["total_cost"] += cost
@@ -307,7 +424,6 @@ Decide your action.
                 # Track reasoning tokens
                 usage = getattr(response, "usage", None)
                 if usage:
-                    r_tokens = 0
                     # Try OpenAI/LiteLLM standard: usage.completion_tokens_details.reasoning_tokens
                     if hasattr(usage, "completion_tokens_details") and usage.completion_tokens_details:
                         r_tokens = getattr(usage.completion_tokens_details, "reasoning_tokens", 0)
@@ -321,7 +437,7 @@ Decide your action.
                 self.log_debug_data(p_name, "STATS_TRACKING_ERROR", str(e))
                 pass # Ignore stats calculation errors to avoid crashing game
 
-            return json.loads(response.choices[0].message.content)
+            return json.loads(response.choices[0].message.content), cost, r_tokens
         except Exception as e:
             self.log_debug_data(p_name, "ERROR", str(e))
             raise e
@@ -335,9 +451,10 @@ Decide your action.
             Automation.HOLE_CARDS_SHOWING_OR_MUCKING, Automation.HAND_KILLING,
         )
 
-        skip_rotation = False
+        skip_rotation = getattr(self, "resumed_skip_rotation", False)
+        start_hand = len(self.game_log["hands"]) + 1
 
-        for hand_idx in range(1, self.num_hands + 1):
+        for hand_idx in range(start_hand, self.num_hands + 1):
             if len(self.models) < 2:
                 self.progress(f"Game Ended - Winner: {self.models[0]['name']}")
                 self.fill_remaining_history(hand_idx)
@@ -430,7 +547,7 @@ Decide your action.
                         model_seat_idx = (pk_actor_idx + rotation_offset) % len(self.models)
                         p_name = self.models[model_seat_idx]['name']
                         
-                        decision = self.get_llm_decision(self.models[model_seat_idx], state, model_seat_idx, hand_idx, rotation_offset)
+                        decision, cost, r_tokens = self.get_llm_decision(self.models[model_seat_idx], state, model_seat_idx, hand_idx, rotation_offset)
                         action = str(decision.get("action", "fold")).lower()
                         amount = int(decision.get("amount", 0)) if decision.get("amount") else 0
                         thought = decision.get("thought_process", "No thought provided")
@@ -489,7 +606,9 @@ Decide your action.
                                 "chips_added": chips_added,
                                 "pot_before": pot_before_action,
                                 "thought": thought,
-                                "valid": valid_move
+                                "valid": valid_move,
+                                "cost": cost,
+                                "reasoning_tokens": r_tokens
                             })
 
                             # Record thought for this hand
@@ -673,11 +792,12 @@ def save_summary(all_stats, all_histories, rank_data):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--hands", type=int, default=5)
-    parser.add_argument("--games", type=int, default=1)
+    parser.add_argument("--hands", type=int, default=5, help="Target total number of hands")
+    parser.add_argument("--games", type=int, default=1, help="Number of games to run (ignored if --load-games is used)")
     parser.add_argument("--memory", type=int, default=150)
     parser.add_argument("--temp", type=float, default=1)
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--load-games", nargs="+", help="JSON files of games to continue")
     args = parser.parse_args()
 
     worker_args = vars(args)
@@ -688,7 +808,57 @@ if __name__ == "__main__":
     all_stats, all_profits, all_histories = [], [], []
     
     # Run games
-    if args.games == 1:
+    if args.load_games:
+        # Continue existing games
+        loaded_game_data = []
+        for file_path in args.load_games:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    loaded_game_data.append(json.load(f))
+            except Exception as e:
+                print(f"Error loading {file_path}: {e}")
+
+        if not loaded_game_data:
+            print("No valid games loaded.")
+            exit()
+
+        print(f"Continuing {len(loaded_game_data)} games...")
+        
+        # Parallel execution for loaded games
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            # We need a special wrapper or just use PokerBenchRunner directly in a loop
+            # Let's define a resume wrapper
+            def resume_game_wrapper(data):
+                try:
+                    runner = PokerBenchRunner.from_json(
+                        data, 
+                        target_hands=args.hands, 
+                        memory_size=args.memory, 
+                        temperature=args.temp, 
+                        debug=args.debug
+                    )
+                    return runner.run()
+                except Exception as e:
+                    print(f"Error resuming game: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    return None
+
+            futures = [executor.submit(resume_game_wrapper, d) for d in loaded_game_data]
+            try:
+                iterator = tqdm(concurrent.futures.as_completed(futures), total=len(loaded_game_data), desc="Games Continued")
+            except Exception:
+                iterator = concurrent.futures.as_completed(futures)
+
+            for future in iterator:
+                res = future.result()
+                if res:
+                    s, p, h, gid = res
+                    all_stats.append(s)
+                    all_profits.append(p)
+                    all_histories.append(h)
+
+    elif args.games == 1:
         res = run_game_wrapper(worker_args)
         if res:
             all_stats, all_profits, all_histories, _ = [res[0]], [res[1]], [res[2]], [res[3]]
