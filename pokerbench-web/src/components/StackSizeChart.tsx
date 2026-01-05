@@ -35,7 +35,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
 
     // Map each hand's pre-hand stacks
     const points = game.hands.map((hand) => ({
-      hand: hand.hand_number,
+      hand: hand.hand_number - 1,
       ...hand.pre_hand_stacks
     }));
 
@@ -54,7 +54,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
 
       if (hasResults) {
         points.push({
-          hand: lastHand.hand_number + 1, // Representing "End"
+          hand: lastHand.hand_number, // Representing "End"
           ...finalStacks
         });
       }
@@ -65,28 +65,16 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
 
   // Apply the filter separately to avoid re-calculating the whole array (though it's cheap here)
   const visibleData = useMemo(() => {
-    // Current Hand Index 0 -> Hand 1. We want to see Hand 1's starting stack.
-    // But a line chart needs 2 points to draw a line. 
-    // If we only have 1 point, it just shows a dot (or nothing depending on config).
-    // The user probably wants context.
+    // Current Hand Index 0 -> Hand 1. We want to see Hand 1's starting stack (Hand 0 in chart).
+    // If we only have 1 point, it just shows a dot.
+    
+    // Index 0 -> Hand 0.
+    // Index 1 -> Hand 1.
 
-    // If we filter STRICTLY to currentHandIndex, we get:
-    // Index 0: Hand 1 Pre-Stack.
-    // Index 1: Hand 2 Pre-Stack.
+    // If I am on Hand 1 (index 0), I want to see point 0 (Start of Hand 1).
+    // If I am on Hand 2 (index 1), I want to see point 0 and 1 (Start of Hand 1, End of Hand 1/Start of Hand 2).
 
-    // If I am on Hand 1, I only see Index 0.
-    // If I am on Hand 2, I see Index 0 and 1.
-
-    // This seems correct for "history".
-
-    const maxHandNumber = (game.hands[currentHandIndex]?.hand_number || 0);
-    // Only show points up to the start of the current hand.
-    // Ideally this means for Hand 1 (Index 0), we only show Point 1 (Start of Hand 1).
-    // A single point renders nothing on a line chart, effectively "empty".
-    // For Hand 2 (Index 1), we show Point 1 and Point 2 (Start of Hand 2).
-    // This draws the line 1->2, effectively showing the history of Hand 1.
-
-    return data.filter(p => p.hand <= maxHandNumber);
+    return data.filter(p => p.hand <= currentHandIndex + 1);
   }, [data, currentHandIndex, game.hands]);
 
   if (!visibleData.length) return null;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Game } from '../lib/types';
 import { Canvas, useThree } from '@react-three/fiber';
 import PokerScene from './PokerScene';
@@ -154,25 +154,32 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
 
   // Auto-play logic
 
+  const stateRef = useRef({ currentStepIndex, currentHandIndex, steps, game });
+  stateRef.current = { currentStepIndex, currentHandIndex, steps, game };
+
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        if (currentStepIndex < steps.length - 1) {
-          setCurrentStepIndex(prev => prev + 1);
+    if (!isPlaying) return;
+
+    const tick = () => {
+      const { currentStepIndex, steps, currentHandIndex, game } = stateRef.current;
+      if (currentStepIndex < steps.length - 1) {
+        setCurrentStepIndex(prev => prev + 1);
+      } else {
+        // If we're at the end of the current hand, move to the next one
+        if (currentHandIndex < game.hands.length - 1) {
+          setCurrentHandIndex(h => h + 1);
+          setCurrentStepIndex(0);
         } else {
-          // If we're at the end of the current hand, move to the next one
-          if (currentHandIndex < game.hands.length - 1) {
-            setCurrentHandIndex(h => h + 1);
-            setCurrentStepIndex(0);
-          } else {
-            setIsPlaying(false);
-          }
+          setIsPlaying(false);
         }
-      }, 2000 / playbackSpeed);
-    }
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 2000 / playbackSpeed);
+
     return () => clearInterval(interval);
-  }, [isPlaying, playbackSpeed, currentStepIndex, steps.length, currentHandIndex, game.hands.length]);
+  }, [isPlaying, playbackSpeed]);
 
   const handleNextHand = () => {
     if (currentHandIndex < game.hands.length - 1) {
