@@ -127,29 +127,20 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
               </div>
             )}
 
-            {/* Name & Stack Badge (Casino Style) */}
-            <div className={`
-              flex flex-col items-center transition-all duration-500
-              ${data.isAction ? 'scale-110' : 'scale-100'}
-              ${data.isActive ? 'opacity-100' : 'opacity-40 grayscale'}
-            `}>
-              {/* Name with Gold border if active/action */}
-              <div className={`
-                  px-4 py-1.5 rounded-sm font-bold text-sm border-2 shadow-2xl skew-x-[-12deg]
-                  ${data.isAction
-                  ? 'bg-blue-700 border-yellow-400 text-white shadow-blue-500/50'
-                  : 'bg-slate-900 border-slate-700 text-slate-100'}
-               `}>
-                <span className="skew-x-[12deg] inline-block">{data.displayName || data.name}</span>
+            {/* Name & Stack Badge (Casino Style - Refined) */}
+            <div className={`badge-container ${data.isAction ? 'action' : ''} ${!data.isActive ? 'inactive' : ''}`}>
+              {/* Name - Glassmorphic Pill */}
+              <div className={`player-name-badge ${data.isAction ? 'action' : ''}`}>
+                <span className="inline-block tracking-wide">{data.displayName || data.name}</span>
               </div>
 
-              {/* Stack - Cash Counter style */}
-              <div className="mt-1 bg-black/80 text-emerald-400 px-3 py-1 rounded-sm text-xs font-mono font-bold border-x border-white/10 shadow-inner">
+              {/* Stack - Clean Pill */}
+              <div className="player-stack-badge">
                 ${data.stack.toLocaleString()}
               </div>
 
               {data.netGain !== undefined && data.netGain !== 0 && (
-                <div className={`mt-1 text-sm font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce ${data.netGain > 0 ? 'text-green-400' : 'text-red-500'}`}>
+                <div className={`player-profit-badge ${data.netGain > 0 ? 'win' : 'loss'}`}>
                   {data.netGain > 0 ? '+$' : '-$'}{Math.abs(data.netGain).toLocaleString()}
                 </div>
               )}
