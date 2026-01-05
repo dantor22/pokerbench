@@ -38,7 +38,7 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
   });
 
   return (
-    <div className="card bg-slate-900 border-slate-800 p-2">
+    <div className="card bg-slate-900 border-slate-800 pb-2">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-slate-100">Stack size over time</h2>
         <p className="text-slate-400 text-sm">Average across runs</p>

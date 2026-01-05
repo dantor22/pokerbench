@@ -25,7 +25,7 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
 
   return (
     <div>
-       <header className="mb-8 flex justify-between items-center">
+       <header className="mb-4 flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-bold text-gradient">
             PokerBench
@@ -46,11 +46,11 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
         </div>
       </header>
 
-      <div className="mb-8">
+      <div className="mb-4">
         <AggregatedProgressChart data={summary.aggregated_stacks} />
       </div>
 
-      <div className="dashboard-lower-grid mb-8">
+      <div className="dashboard-lower-grid mb-4">
         <Leaderboard data={summary.leaderboard} />
         
         <div className="card games-panel">

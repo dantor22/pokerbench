@@ -46,7 +46,6 @@ h6 {
 }
 
 .card {
-  background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 1.5rem;
@@ -58,6 +57,10 @@ h6 {
 /* Utilities */
 .flex {
   display: flex;
+}
+
+.block {
+  display: block;
 }
 
 .flex-col {
@@ -82,6 +85,10 @@ h6 {
 
 .gap-2 {
   gap: 0.5rem;
+}
+
+.gap-3 {
+  gap: 0.75rem;
 }
 
 .gap-4 {
@@ -121,6 +128,11 @@ h6 {
   font-size: 0.75rem;
 }
 
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
 .text-xl {
   font-size: 1.25rem;
 }
@@ -139,6 +151,10 @@ h6 {
 
 .font-mono {
   font-family: monospace;
+}
+
+.uppercase {
+  text-transform: uppercase;
 }
 
 .text-muted {
@@ -167,6 +183,10 @@ h6 {
 
 .mb-4 {
   margin-bottom: 1rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
 }
 
 .mb-8 {
@@ -206,6 +226,22 @@ h6 {
 .py-1 {
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
+}
+
+.pb-0 {
+  padding-bottom: 0 !important;
+}
+
+.pb-2 {
+  padding-bottom: 0.5rem;
+}
+
+.pb-4 {
+  padding-bottom: 1rem;
+}
+
+.pb-6 {
+  padding-bottom: 1.5rem;
 }
 
 .rounded {
@@ -248,8 +284,28 @@ h6 {
   background-color: #1e293b;
 }
 
+.bg-slate-900 {
+  background-color: #0f172a;
+}
+
+.bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.hover\:bg-white\/10:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 .text-white {
   color: #fff;
+}
+
+.text-slate-100 {
+  color: #f1f5f9;
+}
+
+.text-slate-400 {
+  color: #94a3b8;
 }
 
 .text-green {
@@ -314,6 +370,24 @@ h6 {
 
 .h-full {
   height: 100%;
+}
+
+.tracking-wider {
+  letter-spacing: 0.05em;
+}
+
+.border-slate-800 {
+  border-color: #1e293b;
+}
+
+.border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 
 /* Buttons */
@@ -627,7 +701,7 @@ button:hover {
 /* Dashboard specific layout */
 .dashboard-lower-grid {
   display: grid;
-  gap: 2rem;
+  gap: 1.5rem;
   grid-template-columns: 1fr;
 }
 
