@@ -1,0 +1,371 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { Game } from '../lib/types';
+import { Canvas, useThree } from '@react-three/fiber';
+import PokerScene from './PokerScene';
+import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOut, Eye, List } from 'lucide-react';
+import GameTimeline from './GameTimeline';
+import StackSizeChart from './StackSizeChart';
+
+function CameraUpdater({ fov, zoom }: { fov: number; zoom: number }) {
+  const { camera } = useThree();
+  useEffect(() => {
+    // @ts-ignore - TS might complain about fov on Camera but PerspectiveCamera has it
+    if (camera.type === 'PerspectiveCamera') {
+      // @ts-ignore
+      camera.fov = fov;
+      // @ts-ignore
+      camera.zoom = zoom;
+      camera.updateProjectionMatrix();
+    }
+  }, [fov, zoom, camera]);
+  return null;
+}
+
+interface GameSimulatorProps {
+  game: Game;
+}
+
+export default function GameSimulator({ game }: GameSimulatorProps) {
+  const [currentHandIndex, setCurrentHandIndex] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [fov, setFov] = useState(35);
+  const [zoom, setZoom] = useState(0.6);
+
+  const currentHand = game.hands[currentHandIndex];
+  const steps = useMemo(() => {
+    return currentHand?.actions || [];
+  }, [currentHand]);
+
+  // Reconstruct state for the current step
+  const gameState = useMemo(() => {
+    if (!currentHand) {
+      return { players: [], board: [], pot: 0, dealerIndex: -1 };
+    }
+
+    const players = game.players.map(name => ({
+      name,
+      stack: currentHand.pre_hand_stacks[name] || 0,
+      bet: 0,
+      cards: currentHand.hole_cards[name] || [],
+      isActive: (currentHand.pre_hand_stacks[name] || 0) > 0,
+      isFolded: false,
+      isDealer: currentHand.dealer === name,
+      isAction: false,
+      thought: '',
+      currentAction: undefined as string | undefined,
+      netGain: 0
+    }));
+
+    let pot = 0;
+    const board: string[] = [];
+    const dealerIndex = game.players.indexOf(currentHand.dealer);
+
+    // Initialize Blinds with Elimination Handling
+    const activePlayersCount = players.filter(p => p.stack > 0).length;
+
+    const getNextActive = (startIdx: number) => {
+      let current = (startIdx + 1) % players.length;
+      for (let i = 0; i < players.length; i++) {
+        if (players[current].stack > 0) return current;
+        current = (current + 1) % players.length;
+      }
+      return -1;
+    };
+
+    let sbIndex = -1;
+    let bbIndex = -1;
+
+    if (activePlayersCount === 2) {
+      // Heads Up: Dealer is SB, Opponent is BB
+      sbIndex = dealerIndex;
+      bbIndex = getNextActive(dealerIndex);
+    } else if (activePlayersCount > 2) {
+      // Normal: SB left of Dealer, BB left of SB
+      sbIndex = getNextActive(dealerIndex);
+      if (sbIndex !== -1) {
+        bbIndex = getNextActive(sbIndex);
+      }
+    }
+
+    // Apply blinds (cap at stack size)
+    if (sbIndex !== -1 && players[sbIndex]) {
+      const sbAmt = Math.min(players[sbIndex].stack, 50);
+      players[sbIndex].bet = sbAmt;
+      players[sbIndex].stack -= sbAmt;
+    }
+    if (bbIndex !== -1 && players[bbIndex]) {
+      const bbAmt = Math.min(players[bbIndex].stack, 100);
+      players[bbIndex].bet = bbAmt;
+      players[bbIndex].stack -= bbAmt;
+    }
+
+    // Apply actions up to currentStepIndex
+    for (let i = 0; i <= currentStepIndex && i < steps.length; i++) {
+      const action = steps[i];
+      if (action.type === 'street_event') {
+        // Collect folded cards when moving to next street
+        players.forEach(p => { p.isFolded = false; });
+
+        if (action.cards) {
+          board.splice(0, board.length, ...action.cards);
+        }
+        if (action.street && action.street !== 'PRE-FLOP') {
+          // Collect bets
+          players.forEach(p => {
+            pot += p.bet;
+            p.bet = 0;
+          });
+        }
+      } else if (action.type === 'player_action') {
+        const pIndex = players.findIndex(p => p.name === action.player);
+        if (pIndex !== -1) {
+          const p = players[pIndex];
+          const amount = action.chips_added || 0;
+          p.stack -= amount;
+          p.bet += amount;
+          p.thought = (i === currentStepIndex) ? (action.thought || '') : '';
+          p.isAction = (i === currentStepIndex);
+          if (i === currentStepIndex) {
+            p.currentAction = action.action;
+          }
+
+          if (action.action === 'fold') {
+            p.isActive = false;
+            p.isFolded = true;
+          }
+        }
+      }
+    }
+
+    // Check results at end of hand
+    if (currentStepIndex >= steps.length - 1) {
+      currentHand.results.forEach(r => {
+        const p = players.find(pl => pl.name === r.player);
+        if (p) p.netGain = r.net_gain;
+      });
+    }
+
+    return { players, board, pot, dealerIndex };
+  }, [currentHand, currentStepIndex, game.players, steps]);
+
+  // Auto-play logic
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        if (currentStepIndex < steps.length - 1) {
+          setCurrentStepIndex(prev => prev + 1);
+        } else {
+          // If we're at the end of the current hand, move to the next one
+          if (currentHandIndex < game.hands.length - 1) {
+            setCurrentHandIndex(h => h + 1);
+            setCurrentStepIndex(0);
+          } else {
+            setIsPlaying(false);
+          }
+        }
+      }, 2000 / playbackSpeed);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, playbackSpeed, currentStepIndex, steps.length, currentHandIndex, game.hands.length]);
+
+  const handleNextHand = () => {
+    if (currentHandIndex < game.hands.length - 1) {
+      setCurrentHandIndex(prev => prev + 1);
+      setCurrentStepIndex(0);
+    }
+  };
+
+  const handlePrevHand = () => {
+    if (currentHandIndex > 0) {
+      setCurrentHandIndex(prev => prev - 1);
+      setCurrentStepIndex(0);
+    }
+  };
+
+  const handleStepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentStepIndex(Number(e.target.value));
+  };
+
+  if (!currentHand) {
+    return (
+      <div className="flex items-center justify-center p-12 text-slate-400">
+        No hand data available.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 mb-0 select-none">
+      <div className="card text-white relative overflow-hidden p-0 bg-black mb-0" style={{ height: '600px' }}>
+        <div className="absolute top-4 left-4 z-10 select-none">
+          <h2 className="text-2xl font-bold bg-black-50 px-2 rounded">Hand #{currentHand.hand_number}</h2>
+          <div className="text-sm text-gray-300 bg-black-50 px-2 rounded mt-1">{currentHand.dealer} Button</div>
+          <div className="mt-2 space-y-1">
+            {currentHand.results.length > 0 && currentStepIndex >= steps.length - 1 && (
+              <div className="bg-green-900-80 p-2 rounded max-w-xs">
+                <span className="font-bold text-green-300">Winner:</span> {currentHand.results.find(r => r.winner)?.player}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: zoom }}>
+          <CameraUpdater fov={fov} zoom={zoom} />
+          <PokerScene
+            players={gameState.players}
+            board={gameState.board}
+            pot={gameState.pot}
+            dealerIndex={gameState.dealerIndex}
+          />
+        </Canvas>
+      </div>
+
+      <div className="layout-split mb-0">
+        {/* Control Panel (Left) */}
+        <div className="control-panel mb-0 h-full flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <button onClick={handlePrevHand} className="btn-control" style={{ marginRight: '4px' }} title="Previous Hand"><SkipBack size={14} /></button>
+              <button onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))} className="btn-control" title="Previous Step"><Rewind size={14} /></button>
+
+              <div style={{ margin: '0 4px' }}>
+                <button
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="btn-play"
+                  title={isPlaying ? "Pause" : "Play"}
+                >
+                  {isPlaying ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white" style={{ marginLeft: '3px' }} />}
+                </button>
+              </div>
+
+              <button onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))} className="btn-control" title="Next Step"><FastForward size={14} /></button>
+              <button onClick={handleNextHand} className="btn-control" style={{ marginLeft: '4px' }} title="Next Hand"><SkipForward size={14} /></button>
+            </div>
+
+            <div className="flex items-center gap-3" style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '0.375rem', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+              <span className="text-xs font-bold text-slate-400 px-2">SPEED</span>
+              <div className="flex gap-2">
+                {[0.5, 1, 2, 5].map(speed => (
+                  <button
+                    key={speed}
+                    onClick={() => setPlaybackSpeed(speed)}
+                    className={`speed-toggle ${playbackSpeed === speed ? 'active' : ''}`}
+                  >
+                    {speed}x
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Unified Control Panel Section */}
+          <div className="panel-section flex items-center justify-between gap-4">
+            {/* Step/Progress Control */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex items-center gap-2 shrink-0">
+                <List size={14} className="text-blue-400" />
+                <span className="text-xs font-bold text-slate-400">Step</span>
+              </div>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <input
+                  type="range"
+                  min={0}
+                  max={steps.length - 1}
+                  value={currentStepIndex}
+                  onChange={handleStepChange}
+                  className="range-slider"
+                  style={{ height: '4px' }}
+                />
+                <span className="text-xs font-mono text-slate-300 w-12 text-right shrink-0">{currentStepIndex}/{steps.length - 1}</span>
+              </div>
+            </div>
+
+            <div className="w-px h-6 bg-white/10 shrink-0" />
+
+            {/* View Controls Group */}
+            <div className="flex items-center gap-4 shrink-0">
+              {/* FOV */}
+              <div className="flex items-center gap-2">
+                <Eye size={14} className="text-blue-400" />
+                <span className="text-xs font-bold text-slate-400 hidden xl:block">FOV</span>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  value={fov}
+                  onChange={(e) => setFov(Number(e.target.value))}
+                  className="range-slider"
+                  style={{ width: '80px', height: '4px' }}
+                />
+              </div>
+
+              {/* Zoom */}
+              <div className="flex items-center gap-2">
+                <ZoomIn size={14} className="text-blue-400" />
+                <span className="text-xs font-bold text-slate-400 hidden xl:block">Zoom</span>
+                <input
+                  type="range"
+                  min={0.4}
+                  max={1.5}
+                  step={0.05}
+                  value={zoom}
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="range-slider"
+                  style={{ width: '80px', height: '4px' }}
+                />
+              </div>
+            </div>
+
+            <div className="w-px h-6 bg-white/10 shrink-0" />
+
+            <button
+              onClick={() => { setFov(35); setZoom(0.6); }}
+              className="text-xs font-bold text-slate-400 hover:text-white transition-colors shrink-0"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        {/* Thoughts Panel (Right) - Persistent to prevent layout shift */}
+        <div className="card border-l-4 border-blue-500 mb-0 flex flex-col overflow-hidden h-full" style={{ minHeight: '160px' }}>
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10 shrink-0">
+            {gameState.players.find(p => p.thought)?.thought ? (
+              <>
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="font-bold text-blue-400">
+                  {gameState.players.find(p => p.thought)?.name}
+                </span>
+                <span className="text-xs text-slate-500 uppercase tracking-wider font-mono">
+                  {'// REASONING TRACE'}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-slate-600 uppercase tracking-wider font-mono">{'// WAITING FOR ACTION'}</span>
+            )}
+          </div>
+          <div className="text-slate-300 text-sm leading-relaxed font-mono whitespace-pre-wrap flex-1 overflow-y-auto pr-2 custom-scrollbar">
+            {gameState.players.find(p => p.thought)?.thought || <span className="text-slate-700 italic">No active thoughts...</span>}
+          </div>
+        </div>
+      </div>
+
+      <GameTimeline
+        hands={game.hands}
+        currentHandIndex={currentHandIndex}
+        onHandSelect={(index) => {
+          setCurrentHandIndex(index);
+          setCurrentStepIndex(0);
+          setIsPlaying(false);
+        }}
+      />
+      <StackSizeChart game={game} currentHandIndex={currentHandIndex} />
+    </div>
+  );
+}

@@ -1,0 +1,58 @@
+export interface PlayerStats {
+  name: string;
+  avg_profit: number;
+  win_rate: number;
+  total_hands: number;
+  total_cost: number;
+  avg_cost_per_decision: number;
+  avg_reasoning_tokens: number;
+}
+
+export interface Summary {
+  timestamp: number;
+  total_games: number;
+  leaderboard: PlayerStats[];
+  aggregated_stacks: Record<string, number[]>;
+}
+
+export interface Action {
+  type: 'street_event' | 'player_action';
+  street?: string;
+  cards?: string[]; // For street_event
+  player?: string;
+  action?: string;
+  amount?: number;
+  chips_added?: number;
+  pot_before?: number; // Sometimes missing in street_event
+  thought?: string;
+  valid?: boolean;
+}
+
+export interface HandResult {
+  player: string;
+  net_gain: number;
+  winner: boolean;
+}
+
+export interface Hand {
+  hand_number: number;
+  dealer: string;
+  pre_hand_stacks: Record<string, number>;
+  hole_cards: Record<string, string[]>;
+  board: string[];
+  actions: Action[];
+  results: HandResult[];
+}
+
+export interface GameConfig {
+  hands: number;
+  start_stack: number;
+}
+
+export interface Game {
+  game_id: string;
+  timestamp: number;
+  config: GameConfig;
+  players: string[];
+  hands: Hand[];
+}
