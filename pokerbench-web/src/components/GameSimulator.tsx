@@ -8,7 +8,7 @@ import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOu
 import GameTimeline from './GameTimeline';
 import StackSizeChart from './StackSizeChart';
 
-function CameraUpdater({ fov, zoom }: { fov: number; zoom: number }) {
+function CameraUpdater({ fov }: { fov: number }) {
   const { camera } = useThree();
   useEffect(() => {
     // @ts-ignore - TS might complain about fov on Camera but PerspectiveCamera has it
@@ -16,10 +16,10 @@ function CameraUpdater({ fov, zoom }: { fov: number; zoom: number }) {
       // @ts-ignore
       camera.fov = fov;
       // @ts-ignore
-      camera.zoom = zoom;
+      camera.zoom = 0.6; // Fixed optical zoom
       camera.updateProjectionMatrix();
     }
-  }, [fov, zoom, camera]);
+  }, [fov, camera]);
   return null;
 }
 
@@ -215,13 +215,15 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
           </div>
         </div>
 
-        <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: zoom }}>
-          <CameraUpdater fov={fov} zoom={zoom} />
+        <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}>
+          <CameraUpdater fov={fov} />
           <PokerScene
             players={gameState.players}
             board={gameState.board}
             pot={gameState.pot}
             dealerIndex={gameState.dealerIndex}
+            zoomLevel={zoom}
+            onZoomChange={setZoom}
           />
         </Canvas>
       </div>

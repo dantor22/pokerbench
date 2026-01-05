@@ -160,9 +160,10 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
   );
 };
 
-export default function PokerScene({ players, board, pot, dealerIndex }: PokerSceneProps) {
+export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void }) {
   // const [isAutoFollowing, setIsAutoFollowing] = useState(true); // Removed tracking
   const controlsRef = useRef<any>(null);
+  const ZOOM_CONSTANT = 18.6;
 
   useEffect(() => {
     // Manually ensure controls are updated to avoid black screen start
@@ -170,6 +171,39 @@ export default function PokerScene({ players, board, pot, dealerIndex }: PokerSc
       controlsRef.current.update();
     }
   }, []);
+
+  // Sync zoomLevel prop to Camera Distance
+  useEffect(() => {
+    if (controlsRef.current && zoomLevel) {
+      const currentDist = controlsRef.current.getDistance();
+      const targetDist = ZOOM_CONSTANT / zoomLevel;
+      
+      if (Math.abs(currentDist - targetDist) > 0.5) {
+        const cam = controlsRef.current.object;
+        const target = controlsRef.current.target;
+        
+        // Calculate new position maintaining direction
+        const dir = new THREE.Vector3().subVectors(cam.position, target).normalize();
+        cam.position.copy(target).add(dir.multiplyScalar(targetDist));
+        controlsRef.current.update();
+      }
+    }
+  }, [zoomLevel]);
+
+  // Handle OrbitControls changes (User Interaction)
+  const handleControlsChange = (e: any) => {
+    if (onZoomChange) {
+      const dist = e.target.getDistance();
+      // Avoid division by zero, though unlikely with minDistance
+      if (dist > 0) {
+        const newZoom = ZOOM_CONSTANT / dist;
+        // Only update if difference is significant to avoid loop/jitter
+        if (Math.abs(newZoom - zoomLevel) > 0.01) {
+          onZoomChange(newZoom);
+        }
+      }
+    }
+  };
 
   // Auto-follow logic removed
 
@@ -219,6 +253,7 @@ export default function PokerScene({ players, board, pot, dealerIndex }: PokerSc
         maxPolarAngle={Math.PI / 2.1}
         minDistance={10}
         maxDistance={40}
+        onChange={handleControlsChange}
       />
 
 
