@@ -616,3 +616,10 @@ button:hover {
 .ml-2 {
   margin-left: 0.5rem;
 }
+
+/* Remove border/outline from charts on click/focus */
+.recharts-wrapper,
+.recharts-responsive-container,
+.recharts-wrapper * {
+  outline: none !important;
+}

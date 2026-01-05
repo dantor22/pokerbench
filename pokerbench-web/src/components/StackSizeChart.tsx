@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react';
 import { Game } from '../lib/types';
-import { formatModelName } from '../lib/constants';
+import { formatModelName, getModelColor } from '../lib/constants';
+import { ChartCustomDot } from './ChartCustomDot';
 import {
   LineChart,
   Line,
@@ -18,17 +19,6 @@ interface StackSizeChartProps {
   game: Game;
   currentHandIndex: number;
 }
-
-const PLAYER_COLORS = [
-  '#3b82f6', // blue-500
-  '#ef4444', // red-500
-  '#22c55e', // green-500
-  '#eab308', // yellow-500
-  '#a855f7', // purple-500
-  '#ec4899', // pink-500
-  '#f97316', // orange-500
-  '#06b6d4', // cyan-500
-];
 
 export default function StackSizeChart({ game, currentHandIndex }: StackSizeChartProps) {
   const data = useMemo(() => {
@@ -85,7 +75,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
       <h3 className="text-sm font-bold mb-4 text-muted uppercase tracking-wider">Stack History</h3>
       <div style={{ width: '100%', height: '240px' }}>
         <ResponsiveContainer>
-          <LineChart data={visibleData}>
+          <LineChart data={visibleData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
             <XAxis
               dataKey="hand"
@@ -116,15 +106,29 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
               iconType="circle"
               iconSize={8}
             />
-            {game.players.map((player, index) => (
+            {game.players.map((player) => (
               <Line
                 key={player}
                 name={formatModelName(player)}
                 type="monotone"
                 dataKey={player}
-                stroke={PLAYER_COLORS[index % PLAYER_COLORS.length]}
+                stroke={getModelColor(player)}
                 strokeWidth={2}
-                dot={false}
+                dot={(props: any) => {
+                  // Find the last index where this player has a value
+                  // We do this inside the render to have access to updated visibleData if needed,
+                  // but ideally pre-calc. Since it's light, this is fine.
+                  // actually props doesn't have data, we use the closure variable `visibleData`
+                  let lastIndex = visibleData.length - 1;
+                  for (let i = visibleData.length - 1; i >= 0; i--) {
+                    const row = visibleData[i] as any;
+                    if (row[player] !== undefined && row[player] !== null) {
+                      lastIndex = i;
+                      break;
+                    }
+                  }
+                  return <ChartCustomDot {...props} lastPointIndex={lastIndex} modelName={player} />;
+                }}
                 activeDot={{ r: 4 }}
               />
             ))}

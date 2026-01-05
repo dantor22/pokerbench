@@ -1,4 +1,5 @@
 
+
 export const MODEL_NAME_MAPPING: Record<string, string> = {
   "Pro": "Gemini 3 Pro",
   "Minni": "GPT-5 Mini",
@@ -15,6 +16,27 @@ export const MODEL_NAME_MAPPING: Record<string, string> = {
   "flash": "Gemini 3 Flash"
 };
 
+export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInvert?: boolean; logoScale?: number }> = {
+  "Pro": { color: '#3b82f6', logo: '/logos/gemini.svg', logoScale: 1.1 },      // Blue
+  "Minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },   // Green
+  "Claude": { color: '#fb923c', logo: '/logos/anthropic.svg' },  // Orange
+  "FiveTwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 }, // Red
+  "Elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3 },   // Cyan
+  "Flash": { color: '#a855f7', logo: '/logos/gemini.svg', logoScale: 1.1 },     // Purple
+  // Fallbacks
+  "pro": { color: '#3b82f6', logo: '/logos/gemini.svg', logoScale: 1.1 },
+  "minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },
+  "claude": { color: '#fb923c', logo: '/logos/anthropic.svg' },
+  "fivetwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },
+  "elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3 },
+  "flash": { color: '#a855f7', logo: '/logos/gemini.svg', logoScale: 1.1 },
+};
+
 export function formatModelName(name: string): string {
   return MODEL_NAME_MAPPING[name] || name;
 }
+
+export function getModelColor(name: string): string {
+  return MODEL_CONFIG[name]?.color || '#94a3b8';
+}
+
