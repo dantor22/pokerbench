@@ -37,7 +37,7 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
   const totalHands = data[players[0]]?.length || 0;
 
   const chartData = Array.from({ length: totalHands }, (_, i) => {
-    const entry: Record<string, any> = { hand: i + 1 };
+    const entry: Record<string, any> = { hand: i };
     players.forEach(player => {
       entry[player] = data[player][i];
     });

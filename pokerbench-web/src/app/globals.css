@@ -92,6 +92,18 @@ h6 {
   gap: 1.5rem;
 }
 
+.gap-8 {
+  gap: 2rem;
+}
+
+.gap-12 {
+  gap: 3rem;
+}
+
+.ml-4 {
+  margin-left: 1rem;
+}
+
 .grid {
   display: grid;
   gap: 1.5rem;
@@ -554,4 +566,53 @@ button:hover {
     align-items: stretch;
     /* Match height */
   }
+}
+/* Run Selector Styles */
+.run-selector-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.run-selector-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: rgba(15, 23, 42, 0.9); /* slate-900/90 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  padding-right: 2.5rem;
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: #e2e8f0; /* slate-200 */
+  min-width: 200px;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.run-selector-select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.run-selector-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.run-selector-arrow {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8; /* slate-400 */
+  pointer-events: none;
+  transition: color 0.2s;
+}
+
+.run-selector-wrapper:hover .run-selector-arrow {
+  color: white;
+}
+
+.ml-2 {
+  margin-left: 0.5rem;
 }
