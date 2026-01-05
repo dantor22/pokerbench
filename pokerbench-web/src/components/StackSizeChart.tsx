@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Game } from '../lib/types';
+import { formatModelName } from '../lib/constants';
 import {
   LineChart,
   Line,
@@ -118,6 +119,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
             {game.players.map((player, index) => (
               <Line
                 key={player}
+                name={formatModelName(player)}
                 type="monotone"
                 dataKey={player}
                 stroke={PLAYER_COLORS[index % PLAYER_COLORS.length]}

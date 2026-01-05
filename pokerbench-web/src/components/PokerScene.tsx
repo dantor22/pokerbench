@@ -12,6 +12,7 @@ import DealerButton from './poker/DealerButton';
 
 interface PlayerState {
   name: string;
+  displayName?: string;
   stack: number;
   bet: number;
   cards: string[]; // e.g., ["Ah", "Kd"]
@@ -46,7 +47,7 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
       {/* Avatar Rotated to face center */}
       <group rotation={[0, rotationY, 0]}>
         <Avatar
-          name={data.name}
+          name={data.displayName || data.name}
           isActive={data.isActive}
           isAction={data.isAction}
           isDealer={data.isDealer}
@@ -139,7 +140,7 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
                   ? 'bg-blue-700 border-yellow-400 text-white shadow-blue-500/50'
                   : 'bg-slate-900 border-slate-700 text-slate-100'}
                `}>
-                <span className="skew-x-[12deg] inline-block">{data.name}</span>
+                <span className="skew-x-[12deg] inline-block">{data.displayName || data.name}</span>
               </div>
 
               {/* Stack - Cash Counter style */}

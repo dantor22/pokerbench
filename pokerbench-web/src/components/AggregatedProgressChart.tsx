@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import { formatModelName } from '../lib/constants';
 
 interface ProgressChartProps {
   data: Record<string, number[]>;
@@ -73,6 +74,7 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
             {players.map((player, index) => (
               <Line
                 key={player}
+                name={formatModelName(player)}
                 type="monotone"
                 dataKey={player}
                 stroke={COLORS[index % COLORS.length]}

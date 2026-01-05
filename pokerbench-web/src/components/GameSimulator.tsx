@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Game } from '../lib/types';
+import { formatModelName } from '../lib/constants';
 import { Canvas, useThree } from '@react-three/fiber';
 import PokerScene from './PokerScene';
 import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOut, Eye, List } from 'lucide-react';
@@ -48,6 +49,7 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
 
     const players = game.players.map(name => ({
       name,
+      displayName: formatModelName(name),
       stack: currentHand.pre_hand_stacks[name] || 0,
       bet: 0,
       cards: currentHand.hole_cards[name] || [],
@@ -212,11 +214,11 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
       <div className="card text-white relative overflow-hidden p-0 bg-black mb-0" style={{ height: '600px' }}>
         <div className="absolute top-4 left-4 z-10 select-none">
           <h2 className="text-2xl font-bold bg-black-50 px-2 rounded">Hand #{currentHand.hand_number}</h2>
-          <div className="text-sm text-gray-300 bg-black-50 px-2 rounded mt-1">{currentHand.dealer} Button</div>
+          <div className="text-sm text-gray-300 bg-black-50 px-2 rounded mt-1">{formatModelName(currentHand.dealer)} Button</div>
           <div className="mt-2 space-y-1">
             {currentHand.results.length > 0 && currentStepIndex >= steps.length - 1 && (
               <div className="bg-green-900-80 p-2 rounded max-w-xs">
-                <span className="font-bold text-green-300">Winner:</span> {currentHand.results.find(r => r.winner)?.player}
+                <span className="font-bold text-green-300">Winner:</span> {formatModelName(currentHand.results.find(r => r.winner)?.player || '')}
               </div>
             )}
           </div>
@@ -349,7 +351,7 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
               <>
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                 <span className="font-bold text-blue-400">
-                  {gameState.players.find(p => p.thought)?.name}
+                  {gameState.players.find(p => p.thought)?.displayName || gameState.players.find(p => p.thought)?.name}
                 </span>
                 <span className="text-xs text-slate-500 uppercase tracking-wider font-mono">
                   {'// REASONING TRACE'}

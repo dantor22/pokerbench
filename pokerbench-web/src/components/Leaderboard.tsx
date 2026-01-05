@@ -1,4 +1,5 @@
 import { PlayerStats } from '../lib/types';
+import { formatModelName } from '../lib/constants';
 
 interface LeaderboardProps {
   data: PlayerStats[];
@@ -24,7 +25,7 @@ export default function Leaderboard({ data }: LeaderboardProps) {
         <tbody>
           {sortedData.map((player) => (
             <tr key={player.name}>
-              <td className="font-bold">{player.name}</td>
+              <td className="font-bold">{formatModelName(player.name)}</td>
               <td className="text-right">{player.win_rate.toFixed(1)}%</td>
               <td className="text-right">{player.total_hands}</td>
               <td className={`text-right ${player.avg_profit >= 0 ? 'text-green' : 'text-red'}`}>
