@@ -623,3 +623,38 @@ button:hover {
 .recharts-wrapper * {
   outline: none !important;
 }
+
+/* Dashboard specific layout */
+.dashboard-lower-grid {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-lower-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.games-panel {
+  display: flex;
+  flex-direction: column;
+  height: 600px;
+}
+
+.flex-no-shrink {
+  flex-shrink: 0;
+}
+
+.games-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

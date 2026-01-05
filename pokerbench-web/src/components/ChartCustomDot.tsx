@@ -12,20 +12,21 @@ export const ChartCustomDot = (props: any) => {
     const scale = config.logoScale || 1;
     const size = 16 * scale;
     const offset = size / 2;
+    const r = 12;
+    const shiftedCx = cx + r;
     
     return (
-      <g>
+      <g style={{ pointerEvents: 'none' }}>
         {/* White background circle to make logo pop */}
-        <circle cx={cx} cy={cy} r={12} fill="white" stroke={stroke} strokeWidth={2} />
+        <circle cx={shiftedCx} cy={cy} r={r} fill="white" stroke={stroke} strokeWidth={2} />
         {/* The SVG Logo */}
         <image 
-          x={cx - offset} 
+          x={shiftedCx - offset} 
           y={cy - offset} 
           width={size} 
           height={size} 
           href={config.logo} 
           style={{ 
-            pointerEvents: 'none',
             filter: config.logoInvert ? 'invert(1)' : 'none'
           }}
         />
@@ -34,7 +35,9 @@ export const ChartCustomDot = (props: any) => {
   }
 
   // Fallback if no logo found
+  const r = 6;
+  const shiftedCx = cx + r;
   return (
-    <circle cx={cx} cy={cy} r={6} fill="white" stroke={stroke} strokeWidth={2} />
+    <circle cx={shiftedCx} cy={cy} r={r} fill="white" stroke={stroke} strokeWidth={2} style={{ pointerEvents: 'none' }} />
   );
 };

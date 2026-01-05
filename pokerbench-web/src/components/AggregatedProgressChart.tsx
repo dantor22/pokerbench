@@ -17,6 +17,12 @@ interface ProgressChartProps {
   data: Record<string, number[]>;
 }
 
+const CustomActiveDot = (props: any) => {
+  const { cx, cy, fill, index, dataLength } = props;
+  if (index === dataLength - 1) return null;
+  return <circle cx={cx} cy={cy} r={6} fill={fill} strokeWidth={0} />;
+};
+
 export default function AggregatedProgressChart({ data }: ProgressChartProps) {
   if (!data || Object.keys(data).length === 0) return <div>No data available</div>;
 
@@ -32,30 +38,31 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
   });
 
   return (
-    <div className="card bg-slate-900 border-slate-800 p-6">
+    <div className="card bg-slate-900 border-slate-800 p-2">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-slate-100">Money balance over time</h2>
+        <h2 className="text-xl font-bold text-slate-100">Stack size over time</h2>
         <p className="text-slate-400 text-sm">Average across runs</p>
       </div>
       
       <div style={{ width: '100%', height: 400 }} className="select-none">
         <ResponsiveContainer>
-          <LineChart data={chartData} margin={{ top: 20, right: 40, left: 10, bottom: 20 }}>
+          <LineChart data={chartData} margin={{ top: 20, right: 40, left: 10, bottom: 30 }}>
             <CartesianGrid vertical={false} stroke="#334155" strokeDasharray="3 3" opacity={0.3} />
             <XAxis
               dataKey="hand"
+              padding={{ right: 20 }}
               stroke="#64748b"
               tick={{ fill: '#64748b', fontSize: 12 }}
               tickLine={false}
               axisLine={false}
-              label={{ value: 'Hands played', position: 'insideBottom', offset: -10, fill: '#64748b', fontSize: 12 }}
+              label={{ value: 'Hands played', position: 'insideBottom', offset: -5, fill: '#64748b', fontSize: 12 }}
             />
             <YAxis
               stroke="#64748b"
               tick={{ fill: '#64748b', fontSize: 12 }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               padding={{ top: 30, bottom: 30 }}
               domain={['auto', 'auto']}
             />
@@ -86,7 +93,7 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
                   stroke={color}
                   strokeWidth={2}
                   dot={<ChartCustomDot lastPointIndex={totalHands - 1} modelName={player} />}
-                  activeDot={{ r: 6, strokeWidth: 0, fill: color }}
+                  activeDot={(props) => <CustomActiveDot {...props} dataLength={totalHands} fill={color} />}
                   isAnimationActive={false}
                 />
               );

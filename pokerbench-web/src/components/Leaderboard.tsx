@@ -29,7 +29,7 @@ export default function Leaderboard({ data }: LeaderboardProps) {
               <td className="text-right">{player.win_rate.toFixed(1)}%</td>
               <td className="text-right">{player.total_hands}</td>
               <td className={`text-right ${player.avg_profit >= 0 ? 'text-green' : 'text-red'}`}>
-                {player.avg_profit >= 0 ? '+' : ''}{player.avg_profit.toFixed(0)}
+                {player.avg_profit > 0 ? '+' : ''}{player.avg_profit.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </td>
               <td className="text-right">${player.avg_cost_per_decision.toFixed(4)}</td>
             </tr>

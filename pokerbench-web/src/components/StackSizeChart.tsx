@@ -20,6 +20,12 @@ interface StackSizeChartProps {
   currentHandIndex: number;
 }
 
+const CustomActiveDot = (props: any) => {
+  const { cx, cy, fill, index, dataLength } = props;
+  if (index === dataLength - 1) return null;
+  return <circle cx={cx} cy={cy} r={4} fill={fill} strokeWidth={0} />;
+};
+
 export default function StackSizeChart({ game, currentHandIndex }: StackSizeChartProps) {
   const data = useMemo(() => {
     if (!game.hands || game.hands.length === 0) return [];
@@ -73,12 +79,13 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
   return (
     <div className="card w-full">
       <h3 className="text-sm font-bold mb-4 text-muted uppercase tracking-wider">Stack History</h3>
-      <div style={{ width: '100%', height: '240px' }}>
+      <div style={{ width: '100%', height: '240px' }} className="select-none">
         <ResponsiveContainer>
           <LineChart data={visibleData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
             <XAxis
               dataKey="hand"
+              padding={{ right: 20 }}
               stroke="#94a3b8"
               fontSize={12}
               tickLine={false}
@@ -90,7 +97,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
               fontSize={12}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => `${value}`}
+              tickFormatter={(value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             />
             <Tooltip
               contentStyle={{
@@ -99,7 +106,8 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
                 borderRadius: '0.375rem',
                 fontSize: '12px'
               }}
-              itemStyle={{ padding: 0 }}
+              formatter={(value: any, name: any) => [`$${Math.round(Number(value || 0)).toLocaleString()}`, name]}
+              itemStyle={{ padding: 2 }}
             />
             <Legend
               wrapperStyle={{ paddingTop: '10px' }}
@@ -129,7 +137,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
                   }
                   return <ChartCustomDot {...props} lastPointIndex={lastIndex} modelName={player} />;
                 }}
-                activeDot={{ r: 4 }}
+                activeDot={(props) => <CustomActiveDot {...props} dataLength={visibleData.length} fill={getModelColor(player)} />}
               />
             ))}
           </LineChart>

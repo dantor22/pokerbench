@@ -46,29 +46,34 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
         </div>
       </header>
 
-      <div className="grid grid-cols-2 mb-8">
-        <Leaderboard data={summary.leaderboard} />
+      <div className="mb-8">
         <AggregatedProgressChart data={summary.aggregated_stacks} />
       </div>
 
-      <div className="card">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Games</h2>
-          <span className="text-muted text-sm">{gameIds.length} games found</span>
-        </div>
-        <div className="grid grid-cols-2">
-          {[...gameIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map((gameId) => (
-            <Link
-              key={gameId}
-              href={`${basePath}/game/${gameId}`}
-              className="game-card group"
-            >
-              <div className="flex justify-between items-center">
-                <span className="font-mono text-lg">{gameId}</span>
-                <ArrowRight className="w-5 h-5 arrow-icon" />
-              </div>
-            </Link>
-          ))}
+      <div className="dashboard-lower-grid mb-8">
+        <Leaderboard data={summary.leaderboard} />
+        
+        <div className="card games-panel">
+          <div className="flex justify-between items-center mb-4 flex-no-shrink">
+            <h2 className="text-xl font-bold">Games</h2>
+            <span className="text-muted text-sm">{gameIds.length} games found</span>
+          </div>
+          <div className="games-scroll-container custom-scrollbar">
+            <div className="games-list">
+              {[...gameIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map((gameId) => (
+                <Link
+                  key={gameId}
+                  href={`${basePath}/game/${gameId}`}
+                  className="game-card group block"
+                >
+                  <div className="flex justify-between items-center p-2">
+                    <span className="font-mono text-lg">{gameId}</span>
+                    <ArrowRight className="w-5 h-5 arrow-icon" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
