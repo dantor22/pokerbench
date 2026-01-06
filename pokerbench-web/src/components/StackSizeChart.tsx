@@ -81,7 +81,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
       <h3 className="text-sm font-bold mb-4 text-muted uppercase tracking-wider">Stack History</h3>
       <div style={{ width: '100%', height: '240px' }} className="select-none">
         <ResponsiveContainer>
-          <LineChart data={visibleData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+          <LineChart data={visibleData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
             <XAxis
               dataKey="hand"

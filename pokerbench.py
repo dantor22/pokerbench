@@ -52,8 +52,10 @@ except ImportError:
         print(f"--- {desc} Started ---")
         return iterable
 
+import re
+
 # --- ENVIRONMENT SETUP ---
-litellm.enable_json_schema_validation = True
+litellm.enable_json_schema_validation = False
 
 # Ensure output directories exist
 OUTPUT_DIR = "poker_output"
@@ -325,7 +327,22 @@ class PokerBenchRunner:
     )
     def _make_api_call(self, model_name, completion_args):
         """Wrapper for litellm.completion with retry logic."""
-        return completion(**completion_args)
+        response = completion(**completion_args)
+        # Validate that we can parse the response (triggers retry if fails)
+        try:
+            self._parse_llm_response(response.choices[0].message.content)
+        except Exception as e:
+            raise ValueError(f"Invalid JSON response from {model_name}: {e}")
+        return response
+
+    def _parse_llm_response(self, content):
+        """Clean markdown formatting and parse JSON."""
+        content = content.strip()
+        # Try finding JSON block in markdown
+        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
+        if match:
+            content = match.group(1)
+        return json.loads(content)
 
     def get_llm_decision(self, model_config, state, model_seat_idx, current_hand_idx, rotation_offset):
         pk_idx = (model_seat_idx - rotation_offset) % len(self.models)
@@ -437,7 +454,7 @@ Decide your action.
                 self.log_debug_data(p_name, "STATS_TRACKING_ERROR", str(e))
                 pass # Ignore stats calculation errors to avoid crashing game
 
-            return json.loads(response.choices[0].message.content), cost, r_tokens
+            return self._parse_llm_response(response.choices[0].message.content), cost, r_tokens
         except Exception as e:
             self.log_debug_data(p_name, "ERROR", str(e))
             raise e
