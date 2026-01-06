@@ -51,13 +51,13 @@ export default function Table() {
           metalness={0}
         />
         <CurvedText
-          text="adfontes.io/pokerbench"
+          text="pokerbench.adfontes.io"
           radius={7}
           spacing={0.09}
           position={[0, 0, 0.01]}
         />
         <CurvedText
-          text="adfontes.io/pokerbench"
+          text="pokerbench.adfontes.io"
           radius={7}
           spacing={0.09}
           position={[0, 0, 0.01]}
