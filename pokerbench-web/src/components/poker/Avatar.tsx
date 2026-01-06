@@ -14,7 +14,7 @@ const getLogo = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes('gpt') || n.includes('oai')) return '/logos/openai.svg';
   if (n.includes('grok')) return '/logos/grok.svg';
-  if (n.includes('gemini')) return '/logos/gemini.svg';
+  if (n.includes('gemini')) return '/logos/gemini_2025.svg';
   if (n.includes('opus') || n.includes('claude')) return '/logos/anthropic.svg';
   return null;
 };
@@ -26,7 +26,7 @@ function LogoDecal({ url, opacity, position, rotation }: { url: string; opacity:
     <Decal
       position={position}
       rotation={rotation}
-      scale={[2.0, 2.0, 2.0]}
+      scale={[1.9, 1.9, 1.9]}
       renderOrder={1}
     >
       <meshStandardMaterial
