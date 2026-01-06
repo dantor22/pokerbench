@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SOURCE_DIR = path.resolve(__dirname, '../../runs');
-const DEST_DIR = path.resolve(__dirname, '../src/data/runs');
+const DEST_DIR = path.resolve(__dirname, '../public/data/runs');
 const MANIFEST_PATH = path.resolve(__dirname, '../src/data/manifest.json');
 
 // Ensure destination directory exists
