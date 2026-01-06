@@ -340,7 +340,7 @@ class PokerBenchRunner:
     def _parse_llm_response(self, content):
         """Clean markdown formatting and parse JSON."""
         content = content.strip()
-        # Try finding JSON block in markdown
+        # Try finding JSON block in markdown - for Haiku
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
         if match:
             content = match.group(1)
