@@ -256,7 +256,9 @@ class PokerBenchRunner:
                 if act["type"] == "street_event":
                     public_log.append(f"[{act['street']}] Board: {' '.join(act['cards'])}")
                 elif act["type"] == "player_action":
-                    txt = "folded" if act["action"] == "fold" else f"{act['action']}ed {act['amount']}"
+                    past_tense = {"bet": "bet", "raise": "raised", "call": "called", "check": "checked", "fold": "folded"}
+                    verb = past_tense.get(act["action"], act["action"] + "ed")
+                    txt = "folded" if act["action"] == "fold" else f"{verb} {act['amount']}"
                     public_log.append(f"  - {act['player']} {txt}")
             
             log_text = "\n".join(public_log)
@@ -387,11 +389,11 @@ class PokerBenchRunner:
         current_hand_thoughts_text = "\n".join(my_thoughts) if my_thoughts else "No previous thoughts this hand."
 
         base_prompt = f"""
+=== PREVIOUS HANDS ===
+{past_hands_context}
 === TOURNAMENT STATUS ===
 Current Hand: {current_hand_idx} of {self.num_hands}
 Active Players: {len(self.models)}
-=== PREVIOUS HANDS ===
-{past_hands_context}
 === CURRENT HAND LOG ===
 {current_progress}
 === YOUR PREVIOUS THOUGHTS THIS HAND ===
@@ -588,7 +590,10 @@ Decide your action.
                                 call_amt = state.checking_or_calling_amount
                                 prev_bet = state.bets[pk_actor_idx]
                                 state.check_or_call()
-                                txt_action = f"checked/called {call_amt}"
+                                if call_amt > 0:
+                                    txt_action = f"called {call_amt}"
+                                else:
+                                    txt_action = "checked"
                                 if state.street_index == 0: hand_vpip[p_name] = True
                                 
                                 chips_added = call_amt
