@@ -4,7 +4,7 @@
 
 ## The Imperative for Dynamic Evaluation in Imperfect-Information Domains
 
-**PokerBench** establishes a high-frequency, adversarial, and imperfect-information environment: a No-Limit Texas Hold’em (NLTH) tournament. PokerBench places frontier models — including Claude Opus, Gemini 3, and GPT-5.2 - into direct competition. This introduces a "Theory of Mind" requirement; agents must not only manage their own state (chips, cards) but also model the epistemic states and strategies of hostile actors [cite: 1].
+**PokerBench** establishes a high-frequency, adversarial, and imperfect-information environment: a No-Limit Texas Hold’em (NLTH) tournament. PokerBench places frontier models - including Claude Opus, Gemini 3, and GPT-5.2 - into direct competition. This introduces a "Theory of Mind" requirement; agents must not only manage their own state (chips, cards) but also model the epistemic states and strategies of hostile actors [cite: 1].
 
 The complexity of NLTH, with a game tree exceeding $10^{160}$ decision points, forces the LLM to integrate probability estimation (pot odds), resource management (stack depth), and deceptive capability (bluffing) simultaneously [cite: 2].
 
