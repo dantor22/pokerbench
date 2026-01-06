@@ -34,14 +34,18 @@ function getBaseUrl() {
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL;
   }
+  // Fallback for Cloudflare Pages production if env var is missing/not picked up?
+  if (process.env.CF_PAGES_URL) {
+      return process.env.CF_PAGES_URL;
+  }
+  
   // Fallback for local development
   if (process.env.NODE_ENV === 'development') {
     return 'http://localhost:3000';
   }
-  // In production, if variable is not set, we might be in trouble if we need absolute URL.
-  // But often in Edge context with relative fetch might work if supported, but Next.js usually demands absolute.
-  // We'll return empty string and hope, or we could throw a clearer error.
-  return '';
+  
+  // Hard fallback to your specific domain if all else fails
+  return 'https://pokerbench.adfontes.io';
 }
 
 export async function getSummary(runId?: string): Promise<Summary | null> {
