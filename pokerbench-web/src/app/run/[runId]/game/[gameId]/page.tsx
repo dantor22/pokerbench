@@ -26,7 +26,7 @@ export default async function RunGamePage({ params }: PageProps) {
   return (
     <div className="container" style={{ maxWidth: '100%', padding: '1rem' }}>
       <div className="flex items-center gap-4 mb-4">
-        <Link href={`/run/${runId}`} className="back-link">
+        <Link href={`/run/${runId}`} className="back-link" prefetch={false}>
           <ArrowLeft className="w-5 h-5" />
           Back to Run Dashboard
         </Link>
