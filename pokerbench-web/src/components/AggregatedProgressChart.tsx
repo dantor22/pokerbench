@@ -1,8 +1,8 @@
-'use client';
-
+import { useState } from 'react';
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -11,11 +11,14 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { formatModelName, MODEL_CONFIG, getModelColor } from '../lib/constants';
+import { formatModelName, getModelColor } from '../lib/constants';
 import { ChartCustomDot } from './ChartCustomDot';
 
 interface ProgressChartProps {
   data: Record<string, number[]>;
+  enrichedData?: Record<string, { mean: number[], low: number[], high: number[] }>;
+  showStats?: boolean;
+  onToggleStats?: (show: boolean) => void;
 }
 
 const CustomActiveDot = (props: any) => {
@@ -24,31 +27,58 @@ const CustomActiveDot = (props: any) => {
   return <circle cx={cx} cy={cy} r={6} fill={fill} strokeWidth={0} />;
 };
 
-export default function AggregatedProgressChart({ data }: ProgressChartProps) {
+export default function AggregatedProgressChart({ data, enrichedData, showStats = false, onToggleStats }: ProgressChartProps) {
   if (!data || Object.keys(data).length === 0) return <div>No data available</div>;
 
   const players = Object.keys(data);
   const totalHands = data[players[0]]?.length || 0;
+  
+  // Can we show stats?
+  const canShowStats = !!enrichedData && Object.keys(enrichedData).length > 0;
+  const actuallyShowStats = canShowStats && showStats;
 
   const chartData = Array.from({ length: totalHands }, (_, i) => {
     const entry: Record<string, any> = { hand: i };
     players.forEach(player => {
-      entry[player] = data[player][i];
+      if (enrichedData && enrichedData[player]) {
+        entry[`${player}_mean`] = enrichedData[player].mean[i];
+        entry[`${player}_range`] = [enrichedData[player].low[i], enrichedData[player].high[i]];
+      } else {
+        entry[player] = data[player][i];
+      }
     });
     return entry;
   });
 
   return (
-    <div className="card bg-slate-900 border-slate-800 pb-2">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-slate-100">Stack size over time</h2>
-        <p className="text-slate-400 text-sm">Average across runs</p>
+    <div className="card bg-slate-900 border-slate-800 pb-2 relative">
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold text-slate-100">Stack size over time</h2>
+          <p className="text-slate-400 text-sm">
+            Average across {canShowStats ? 'observed' : 'aggregated'} runs 
+          </p>
+        </div>
+        {canShowStats && onToggleStats && (
+          <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50 hover:bg-slate-800 transition-colors">
+            <input 
+              type="checkbox" 
+              id="nerd-stats" 
+              className="accent-blue-500 w-4 h-4 cursor-pointer"
+              checked={showStats}
+              onChange={(e) => onToggleStats(e.target.checked)}
+            />
+            <label htmlFor="nerd-stats" className="text-xs font-medium text-slate-300 cursor-pointer select-none">
+              Stats for nerds
+            </label>
+          </div>
+        )}
       </div>
       
       <div style={{ width: '100%', height: 400 }} className="select-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-          <LineChart data={chartData} margin={{ top: 20, right: 40, left: 10, bottom: 30 }}>
-            <CartesianGrid vertical={false} stroke="#334155" strokeDasharray="3 3" opacity={0.3} />
+          <ComposedChart data={chartData} margin={{ top: 20, right: 40, left: 10, bottom: 30 }}>
+            <CartesianGrid vertical={false} stroke="#334155" strokeDasharray="3 3" opacity={0.2} />
             <XAxis
               dataKey="hand"
               padding={{ right: 20 }}
@@ -76,7 +106,10 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
                 color: '#f8fafc',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
               }}
-              formatter={(value: any, name: any) => [`$${Math.round(Number(value || 0)).toLocaleString()}`, name]}
+              formatter={(value: any, name: any) => {
+                if (typeof name === 'string' && name.endsWith('_range')) return null;
+                return [`$${Math.round(Number(value || 0)).toLocaleString()}`, name];
+              }}
               labelFormatter={(label) => `Hand: ${label}`}
               itemStyle={{ paddingBottom: 4 }}
             />
@@ -84,23 +117,42 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
               iconType="circle" 
               wrapperStyle={{ paddingTop: '10px' }}
             />
+            
             {players.map((player) => {
               const color = getModelColor(player);
+              const dataKey = (canShowStats) ? `${player}_mean` : player;
+              
               return (
-                <Line
-                  key={player}
-                  name={formatModelName(player)}
-                  type="monotone"
-                  dataKey={player}
-                  stroke={color}
-                  strokeWidth={2}
-                  dot={<ChartCustomDot lastPointIndex={totalHands - 1} modelName={player} />}
-                  activeDot={(props) => <CustomActiveDot {...props} dataLength={totalHands} fill={color} />}
-                  isAnimationActive={false}
-                />
+                <g key={player}>
+                  {actuallyShowStats && (
+                    <Area
+                      type="monotone"
+                      dataKey={`${player}_range`}
+                      stroke="none"
+                      fill={color}
+                      fillOpacity={0.15}
+                      connectNulls
+                      isAnimationActive={false}
+                      legendType="none"
+                      name={`${player}_range`}
+                      dot={false}
+                      activeDot={false}
+                    />
+                  )}
+                  <Line
+                    name={formatModelName(player)}
+                    type="monotone"
+                    dataKey={dataKey}
+                    stroke={color}
+                    strokeWidth={2}
+                    dot={<ChartCustomDot lastPointIndex={totalHands - 1} modelName={player} />}
+                    activeDot={(props) => <CustomActiveDot {...props} dataLength={totalHands} fill={color} />}
+                    isAnimationActive={false}
+                  />
+                </g>
               );
             })}
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>

@@ -1,6 +1,9 @@
 export interface PlayerStats {
   name: string;
   avg_profit: number;
+  profits?: number[];
+  std_dev?: number;
+  confidence_interval?: number;
   win_rate: number;
   total_hands: number;
   total_cost: number;
@@ -13,6 +16,7 @@ export interface Summary {
   total_games: number;
   leaderboard: PlayerStats[];
   aggregated_stacks: Record<string, number[]>;
+  enriched_stacks?: Record<string, { mean: number[], low: number[], high: number[] }>;
 }
 
 export interface Action {
