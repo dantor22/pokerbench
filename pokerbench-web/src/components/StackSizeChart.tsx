@@ -82,7 +82,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
       <h3 className="text-sm font-bold mb-4 text-muted uppercase tracking-wider">Stack History</h3>
       <div style={{ width: '100%', height: '240px' }} className="select-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-          <LineChart data={visibleData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+          <LineChart data={visibleData} margin={{ top: 20, right: 45, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
             <XAxis
               dataKey="hand"
@@ -99,6 +99,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              width={55}
             />
             <ReferenceLine y={10000} stroke="#475569" strokeDasharray="3 3" label={{ value: '$10k', position: 'right', fill: '#64748b', fontSize: 10 }} />
             <Tooltip
@@ -111,10 +112,14 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
               formatter={(value: any, name: any) => [`$${Math.round(Number(value || 0)).toLocaleString()}`, name]}
               itemStyle={{ padding: 2 }}
             />
-            <Legend
-              wrapperStyle={{ paddingTop: '10px' }}
-              iconType="circle"
+            <Legend 
+              iconType="circle" 
               iconSize={8}
+              wrapperStyle={{ 
+                paddingTop: '20px', 
+                fontSize: '11px',
+                lineHeight: '1.2'
+              }}
             />
             {game.players.map((player) => (
               <Line

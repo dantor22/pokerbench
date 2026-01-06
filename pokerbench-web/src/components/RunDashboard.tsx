@@ -128,7 +128,7 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
 
   return (
     <div>
-       <header className="mb-4 flex justify-between items-center">
+      <header className="mb-8 flex-responsive">
         <div>
           <h1 className="text-4xl font-bold text-gradient">
             PokerBench
@@ -138,19 +138,19 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
             {isEnriching && (
               <div className="flex items-center gap-2 text-xs text-muted animate-pulse">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                Computing high-fidelity stats...
+                <span className="md-visible">Computing high-fidelity stats...</span>
               </div>
             )}
           </div>
         </div>
-        <div className="flex gap-8 text-right">
+        <div className="flex gap-responsive text-right-md">
           <div>
             <div className="text-2xl font-bold">{totalGames}</div>
-            <div className="text-muted text-sm uppercase" style={{ letterSpacing: '0.05em' }}>Total Games</div>
+            <div className="text-muted text-sm uppercase tracking-wider">Total Games</div>
           </div>
-          <div className="ml-4">
+          <div className="ml-0 md-ml-4">
             <div className="text-2xl font-bold">{totalHands}</div>
-            <div className="text-muted text-sm uppercase" style={{ letterSpacing: '0.05em' }}>Total Hands</div>
+            <div className="text-muted text-sm uppercase tracking-wider">Total Hands</div>
           </div>
         </div>
       </header>
@@ -167,8 +167,8 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
       <div className="dashboard-lower-grid mb-4">
         <Leaderboard data={enrichedLeaderboard} showStats={showStats} />
         
-        <div className="card games-panel">
-          <div className="flex justify-between items-center mb-4 flex-no-shrink">
+        <div className="card games-panel mb-1">
+          <div className="flex justify-between items-baseline mb-4 flex-no-shrink">
             <h2 className="text-xl font-bold">Games</h2>
             <span className="text-muted text-sm">{gameIds.length} games found</span>
           </div>
@@ -181,9 +181,9 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
                   className="game-card group block"
                   prefetch={false}
                 >
-                  <div className="flex justify-between items-center p-2">
-                    <span className="font-mono text-lg">{gameId.replace(/_/g, ' ')}</span>
-                    <ArrowRight className="w-5 h-5 arrow-icon" />
+                  <div className="flex justify-between items-center p-1">
+                    <span className="font-mono text-base">{gameId.replace(/_/g, ' ')}</span>
+                    <ArrowRight className="w-4 h-4 arrow-icon" />
                   </div>
                 </Link>
               ))}

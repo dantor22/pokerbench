@@ -52,7 +52,7 @@ export default function AggregatedProgressChart({ data, enrichedData, showStats 
 
   return (
     <div className="card bg-slate-900 border-slate-800 pb-2 relative">
-      <div className="mb-6 flex justify-between items-center">
+      <div className="flex-responsive">
         <div>
           <h2 className="text-xl font-bold text-slate-100">Stack size over time</h2>
           <p className="text-slate-400 text-sm">
@@ -60,7 +60,7 @@ export default function AggregatedProgressChart({ data, enrichedData, showStats 
           </p>
         </div>
         {canShowStats && onToggleStats && (
-          <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50 hover:bg-slate-800 transition-colors">
+          <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50 hover:bg-slate-800 transition-colors self-start md-self-auto">
             <input 
               type="checkbox" 
               id="nerd-stats" 
@@ -77,7 +77,7 @@ export default function AggregatedProgressChart({ data, enrichedData, showStats 
       
       <div style={{ width: '100%', height: 400 }} className="select-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 40, left: 10, bottom: 30 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 45, left: 0, bottom: 30 }}>
             <CartesianGrid vertical={false} stroke="#334155" strokeDasharray="3 3" opacity={0.2} />
             <XAxis
               dataKey="hand"
@@ -96,6 +96,7 @@ export default function AggregatedProgressChart({ data, enrichedData, showStats 
               tickFormatter={(value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               padding={{ top: 30, bottom: 30 }}
               domain={['auto', 'auto']}
+              width={55}
             />
             <ReferenceLine y={10000} stroke="#475569" strokeDasharray="3 3" label={{ value: '$10k', position: 'right', fill: '#64748b', fontSize: 10 }} />
             <Tooltip
@@ -115,7 +116,12 @@ export default function AggregatedProgressChart({ data, enrichedData, showStats 
             />
             <Legend 
               iconType="circle" 
-              wrapperStyle={{ paddingTop: '10px' }}
+              iconSize={8}
+              wrapperStyle={{ 
+                paddingTop: '20px', 
+                fontSize: '11px',
+                lineHeight: '1.2'
+              }}
             />
             
             {players.map((player) => {

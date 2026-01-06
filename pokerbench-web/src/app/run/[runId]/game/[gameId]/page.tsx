@@ -25,13 +25,16 @@ export default async function RunGamePage({ params }: PageProps) {
 
   return (
     <div className="container" style={{ maxWidth: '100%', padding: '1rem' }}>
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex-responsive mb-6 !gap-2">
         <Link href={`/run/${runId}`} className="back-link" prefetch={false}>
           <ArrowLeft className="w-5 h-5" />
-          Back to Run Dashboard
+          <span className="sm-visible">Back to Run Dashboard</span>
+          <span className="sm-hidden">Back</span>
         </Link>
-        <span className="text-muted">|</span>
-        <h1 className="text-xl font-bold">Game {game.game_id.replace(/_/g, ' ')} <span className="text-sm font-normal text-muted">({decodedRunId.replace(/_/g, ' ')})</span></h1>
+        <h1 className="text-xl font-bold">
+          Game <span className="font-mono">{game.game_id.replace(/_/g, ' ')}</span>
+          <span className="text-sm font-normal text-muted block sm-visible sm-ml-2">({decodedRunId.replace(/_/g, ' ')})</span>
+        </h1>
       </div>
 
       <GameSimulator game={game} />

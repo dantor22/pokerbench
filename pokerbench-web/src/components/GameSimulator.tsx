@@ -211,7 +211,7 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
 
   return (
     <div className="flex flex-col gap-2 mb-0 select-none">
-      <div className="card text-white relative overflow-hidden p-0 bg-black mb-0" style={{ height: '600px' }}>
+      <div className="card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container">
         <div className="absolute top-4 left-4 z-10 select-none">
           <h2 className="text-2xl font-bold bg-black-50 px-2 rounded">Hand #{currentHand.hand_number}</h2>
           <div className="text-sm text-gray-300 bg-black-50 px-2 rounded mt-1">{formatModelName(currentHand.dealer)} Button</div>
@@ -240,43 +240,45 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
       <div className="layout-split mb-0">
         {/* Control Panel (Left) */}
         <div className="control-panel mb-0 h-full flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <button onClick={handlePrevHand} className="btn-control" style={{ marginRight: '4px' }} title="Previous Hand"><SkipBack size={14} /></button>
-              <button onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))} className="btn-control" title="Previous Step"><Rewind size={14} /></button>
+          <div className="flex-responsive-tight">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-1">
+                <button onClick={handlePrevHand} className="btn-control" style={{ marginRight: '4px' }} title="Previous Hand"><SkipBack size={14} /></button>
+                <button onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))} className="btn-control" title="Previous Step"><Rewind size={14} /></button>
 
-              <div style={{ margin: '0 4px' }}>
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="btn-play"
-                  title={isPlaying ? "Pause" : "Play"}
-                >
-                  {isPlaying ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white" style={{ marginLeft: '3px' }} />}
-                </button>
+                <div style={{ margin: '0 4px' }}>
+                  <button
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="btn-play"
+                    title={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white" style={{ marginLeft: '3px' }} />}
+                  </button>
+                </div>
+
+                <button onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))} className="btn-control" title="Next Step"><FastForward size={14} /></button>
+                <button onClick={handleNextHand} className="btn-control" style={{ marginLeft: '4px' }} title="Next Hand"><SkipForward size={14} /></button>
               </div>
 
-              <button onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))} className="btn-control" title="Next Step"><FastForward size={14} /></button>
-              <button onClick={handleNextHand} className="btn-control" style={{ marginLeft: '4px' }} title="Next Hand"><SkipForward size={14} /></button>
-            </div>
-
-            <div className="flex items-center gap-3" style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '0.375rem', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-              <span className="text-xs font-bold text-slate-400 px-2">SPEED</span>
-              <div className="flex gap-2">
-                {[0.5, 1, 2, 5].map(speed => (
-                  <button
-                    key={speed}
-                    onClick={() => setPlaybackSpeed(speed)}
-                    className={`speed-toggle ${playbackSpeed === speed ? 'active' : ''}`}
-                  >
-                    {speed}x
-                  </button>
-                ))}
+              <div className="flex items-center gap-3" style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '0.375rem', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <span className="text-xs font-bold text-slate-400 px-2 lg-visible">SPEED</span>
+                <div className="flex gap-2">
+                  {[1, 2, 5].map(speed => (
+                    <button
+                      key={speed}
+                      onClick={() => setPlaybackSpeed(speed)}
+                      className={`speed-toggle ${playbackSpeed === speed ? 'active' : ''}`}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Unified Control Panel Section */}
-          <div className="panel-section flex items-center justify-between gap-4">
+          <div className="panel-section flex-responsive-tight">
             {/* Step/Progress Control */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="flex items-center gap-2 shrink-0">
@@ -297,14 +299,14 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
               </div>
             </div>
 
-            <div className="w-px h-6 bg-white/10 shrink-0" />
+            <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
 
             {/* View Controls Group */}
             <div className="flex items-center gap-4 shrink-0">
               {/* FOV */}
               <div className="flex items-center gap-2">
                 <Eye size={14} className="text-blue-400" />
-                <span className="text-xs font-bold text-slate-400 hidden xl:block">FOV</span>
+                <span className="text-xs font-bold text-slate-400 xl-visible">FOV</span>
                 <input
                   type="range"
                   min={10}
@@ -312,14 +314,14 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
                   value={fov}
                   onChange={(e) => setFov(Number(e.target.value))}
                   className="range-slider"
-                  style={{ width: '80px', height: '4px' }}
+                  style={{ width: '60px', height: '4px' }}
                 />
               </div>
 
               {/* Zoom */}
               <div className="flex items-center gap-2">
                 <ZoomIn size={14} className="text-blue-400" />
-                <span className="text-xs font-bold text-slate-400 hidden xl:block">Zoom</span>
+                <span className="text-xs font-bold text-slate-400 xl-visible">Zoom</span>
                 <input
                   type="range"
                   min={0.4}
@@ -328,12 +330,12 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
                   value={zoom}
                   onChange={(e) => setZoom(Number(e.target.value))}
                   className="range-slider"
-                  style={{ width: '80px', height: '4px' }}
+                  style={{ width: '60px', height: '4px' }}
                 />
               </div>
             </div>
 
-            <div className="w-px h-6 bg-white/10 shrink-0" />
+            <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
 
             <button
               onClick={() => { setFov(35); setZoom(0.6); }}
