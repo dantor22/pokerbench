@@ -4,6 +4,9 @@ import RunSelector from '../components/RunSelector';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
+
+export const runtime = 'edge';
 
 // Revalidate data every hour
 export const revalidate = 3600;

@@ -1,71 +1,58 @@
-import fs from 'fs/promises';
-import path from 'path';
 import { Summary, Game } from './types';
+import manifest from '../data/manifest.json';
 
-// Assuming data is in the parent directory of the pokerbench-web project
-const DATA_DIR = path.resolve(process.cwd(), '..');
-const RUNS_DIR = path.join(DATA_DIR, 'runs');
+// Define the type for our manifest to help TS
+type Manifest = {
+  runs: string[];
+  games: Record<string, string[]>;
+};
+
+const dataManifest = manifest as Manifest;
 
 export async function getRuns(): Promise<string[]> {
-  try {
-    // Check if runs directory exists
-    try {
-      await fs.access(RUNS_DIR);
-    } catch {
-      return [];
-    }
-    
-    const entries = await fs.readdir(RUNS_DIR, { withFileTypes: true });
-    return entries
-      .filter(entry => entry.isDirectory())
-      .map(entry => entry.name)
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })); // Alphabetical order (A-Z)
-  } catch (error) {
-    console.error('Error listing runs:', error);
-    return [];
-  }
-}
-
-function getDataPath(runId?: string): string {
-  if (runId) {
-    return path.join(RUNS_DIR, runId);
-  }
-  return DATA_DIR;
+  return dataManifest.runs;
 }
 
 export async function getSummary(runId?: string): Promise<Summary | null> {
   try {
-    const dir = getDataPath(runId);
-    const filePath = path.join(dir, 'summary.json');
-    const content = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(content);
+    // Note: dynamic imports relative path must be constructed carefully or Webpack might miss them.
+    // However, since runId is a string, we need to be careful.
+    // In Next.js/Webpack, we can often import using a template string if the files exist at compile time.
+    
+    // We are looking for src/data/runs/[runId]/summary.json
+    
+    // NOTE: We cannot easily import from the 'root' of data if runId is undefined (meaning local root?)
+    // In the original code, 'root' meant DATA_DIR.
+    // Only runs have migrated to src/data/runs.
+    // Check if there is a use case for root-level summary.
+    
+    if (!runId) return null; // We only support specific runs now
+
+    // Using a switch or map is safer for bundlers than a purely dynamic string if the set is small,
+    // but for 48MB of data, dynamic import with template string should work if the pattern is clear.
+    
+    // We explicitly point to the alias '@' or relative path.
+    const summary = await import(`../data/runs/${runId}/summary.json`);
+    return summary.default || summary;
   } catch (error) {
-    console.error(`Error reading summary.json for run ${runId || 'root'}:`, error);
+    console.error(`Error loading summary for ${runId}:`, error);
     return null;
   }
 }
 
 export async function getGameIds(runId?: string): Promise<string[]> {
-  try {
-    const dir = getDataPath(runId);
-    const files = await fs.readdir(dir);
-    return files
-      .filter(f => f.startsWith('game_') && f.endsWith('.json'))
-      .map(f => f.replace('game_', '').replace('.json', ''));
-  } catch (error) {
-    console.error(`Error reading game files for run ${runId || 'root'}:`, error);
-    return [];
-  }
+  if (!runId) return [];
+  return dataManifest.games[runId] || [];
 }
 
 export async function getGame(gameId: string, runId?: string): Promise<Game | null> {
   try {
-    const dir = getDataPath(runId);
-    const filePath = path.join(dir, `game_${gameId}.json`);
-    const content = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(content);
+    if (!runId) return null;
+    
+    const game = await import(`../data/runs/${runId}/game_${gameId}.json`);
+    return game.default || game;
   } catch (error) {
-    console.error(`Error reading game_${gameId}.json for run ${runId || 'root'}:`, error);
+    console.error(`Error loading game ${gameId} for run ${runId}:`, error);
     return null;
   }
 }

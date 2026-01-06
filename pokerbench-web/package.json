@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "pages:build": "npx @cloudflare/next-on-pages",
+    "sync-data": "node scripts/sync-data.js",
+    "dev": "npm run sync-data && next dev",
+    "build": "npm run sync-data && next build",
+    "pages:build": "npm run sync-data && npx @cloudflare/next-on-pages",
     "start": "next start",
     "lint": "eslint"
   },

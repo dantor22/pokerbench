@@ -3,6 +3,8 @@ import GameSimulator from '../../../../../components/GameSimulator';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
+export const runtime = 'edge';
+
 interface PageProps {
   params: Promise<{ runId: string; gameId: string }>;
 }
