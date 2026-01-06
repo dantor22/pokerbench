@@ -45,7 +45,7 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
       </div>
       
       <div style={{ width: '100%', height: 400 }} className="select-none">
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <LineChart data={chartData} margin={{ top: 20, right: 40, left: 10, bottom: 30 }}>
             <CartesianGrid vertical={false} stroke="#334155" strokeDasharray="3 3" opacity={0.3} />
             <XAxis
