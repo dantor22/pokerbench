@@ -2,6 +2,7 @@
 
 import { Html, OrbitControls, Billboard } from '@react-three/drei';
 import { useRef, useEffect } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import Table from './poker/Table';
 import ChipStack from './poker/ChipStack';
@@ -33,6 +34,9 @@ interface PokerSceneProps {
 }
 
 const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: number; totalPlayers: number }) => {
+  const badgeRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
+
   // Table radius is ~11. Players sit at ~14.
   const radius = 14;
   const angle = (index / totalPlayers) * Math.PI * 2 + Math.PI / 2;
@@ -41,6 +45,18 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
 
   // Calculate rotation to face center
   const rotationY = -angle + Math.PI / 2;
+
+  // Adaptive scaling logic
+  useFrame(() => {
+    if (badgeRef.current) {
+      const dist = camera.position.distanceTo(badgeRef.current.getWorldPosition(new THREE.Vector3()));
+      // Non-linear scale: stays readable far away, doesn't get too huge up close
+      // A linear scale (dist/15) keeps it constant size on screen. 
+      // We'll use a slightly slower growth so it still feels 3D.
+      const scale = Math.max(.5, dist / 15);
+      badgeRef.current.scale.set(scale, scale, scale);
+    }
+  });
 
   return (
     <group position={[x, 0, z]}>
@@ -102,60 +118,82 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
         )}
       </group>
 
-      {/* Floating UI (Name, Stack, Action) */}
-      <Html position={[0, 4, 0]} center zIndexRange={[100, 0]}>
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '180px',
-          pointerEvents: 'none'
-        }}>
-          {/* Relative Container for Name/Stack to anchor the absolute Action Badge */}
-          <div className="relative flex flex-col items-center">
+      <Billboard 
+        ref={badgeRef}
+        position={[0, 5, 0]} 
+        follow={true} 
+        lockX={false} 
+        lockY={false} 
+        lockZ={false}
+      >
+        <Html 
+          center 
+          transform 
+          zIndexRange={[100, 0]}
+        >
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '180px',
+            pointerEvents: 'none'
+          }}>
+            {/* Relative Container for Name/Stack to anchor the absolute Action Badge */}
+            <div className="relative flex flex-col items-center">
 
-            {/* Action Badge - Absolute positioned above using inline styles for robustness */}
-            {data.isAction && data.currentAction && (
-              <div
-                className="absolute px-3 py-1 rounded-full font-black text-xs tracking-wider shadow-[0_0_15px_rgba(0,0,0,0.5)] transform animate-in zoom-in duration-300 whitespace-nowrap"
-                style={{
-                  top: '-30px', /* Lowered by 30px as requested */
-                  backgroundColor: data.currentAction === 'fold' ? '#dc2626' : data.currentAction === 'check' ? '#10b981' : '#f59e0b',
-                  color: (data.currentAction === 'fold' || data.currentAction === 'check') ? 'white' : 'black',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  textTransform: 'uppercase'
-                }}
-              >
-                {data.currentAction}
-              </div>
-            )}
-
-            {/* Name & Stack Badge (Casino Style - Refined) */}
-            <div className={`badge-container ${data.isAction ? 'action' : ''} ${!data.isActive ? 'inactive' : ''}`}>
-              {/* Name - Glassmorphic Pill */}
-              <div className={`player-name-badge ${data.isAction ? 'action' : ''}`}>
-                <span className="inline-block tracking-wide">{data.displayName || data.name}</span>
-              </div>
-
-              {/* Stack - Clean Pill */}
-              <div className="player-stack-badge">
-                ${data.stack.toLocaleString()}
-              </div>
-
-              {data.netGain !== undefined && data.netGain !== 0 && (
-                <div className={`player-profit-badge ${data.netGain > 0 ? 'win' : 'loss'}`}>
-                  {data.netGain > 0 ? '+$' : '-$'}{Math.abs(data.netGain).toLocaleString()}
+              {/* Action Badge - Absolute positioned above using inline styles for robustness */}
+              {data.isAction && data.currentAction && (
+                <div
+                  className="absolute px-3 py-1 rounded-full font-black text-xs tracking-wider shadow-[0_0_15px_rgba(0,0,0,0.5)] transform animate-in zoom-in duration-300 whitespace-nowrap"
+                  style={{
+                    top: '-30px', /* Lowered by 30px as requested */
+                    backgroundColor: data.currentAction === 'fold' ? '#dc2626' : data.currentAction === 'check' ? '#10b981' : '#f59e0b',
+                    color: (data.currentAction === 'fold' || data.currentAction === 'check') ? 'white' : 'black',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  {data.currentAction}
                 </div>
               )}
+
+              {/* Name & Stack Badge (Casino Style - Refined) */}
+              <div className={`badge-container ${data.isAction ? 'action' : ''} ${!data.isActive ? 'inactive' : ''}`}>
+                {/* Name - Glassmorphic Pill */}
+                <div className={`player-name-badge ${data.isAction ? 'action' : ''}`}>
+                  <span className="inline-block tracking-wide">{data.displayName || data.name}</span>
+                </div>
+
+                {/* Stack - Clean Pill */}
+                <div className="player-stack-badge">
+                  ${data.stack.toLocaleString()}
+                </div>
+
+                {data.netGain !== undefined && data.netGain !== 0 && (
+                  <div className={`player-profit-badge ${data.netGain > 0 ? 'win' : 'loss'}`}>
+                    {data.netGain > 0 ? '+$' : '-$'}{Math.abs(data.netGain).toLocaleString()}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </Html>
+        </Html>
+      </Billboard>
     </group>
   );
 };
 
 export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void }) {
-  // const [isAutoFollowing, setIsAutoFollowing] = useState(true); // Removed tracking
+  const potBadgeRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const ZOOM_CONSTANT = 18.6;
+
+  // Adaptive scaling for POT
+  useFrame(() => {
+    if (potBadgeRef.current) {
+      const dist = camera.position.distanceTo(potBadgeRef.current.getWorldPosition(new THREE.Vector3()));
+      const scale = Math.max(0.8, dist / 15);
+      potBadgeRef.current.scale.set(scale, scale, scale);
+    }
+  });
 
   useEffect(() => {
     // Manually ensure controls are updated to avoid black screen start
@@ -209,14 +247,22 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
       <group position={[0, -2, 0]}>
         <Table />
 
-        {/* Pot */}
         <group position={[0, 0.1, 0]}>
           <ChipStack amount={pot} position={[0, 0, 0]} />
-          <Html position={[0, 2, 0]} center>
-            <div className="text-yellow-400 font-bold text-xl drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] neon-text">
-              POT: ${(pot + players.reduce((sum, p) => sum + p.bet, 0)).toLocaleString()}
-            </div>
-          </Html>
+          <Billboard 
+            ref={potBadgeRef}
+            position={[0, 2.5, 0]} 
+            follow={true} 
+            lockX={false} 
+            lockY={false} 
+            lockZ={false}
+          >
+            <Html center transform>
+              <div className="text-yellow-400 font-bold text-xl drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] neon-text whitespace-nowrap">
+                POT: ${(pot + players.reduce((sum, p) => sum + p.bet, 0)).toLocaleString()}
+              </div>
+            </Html>
+          </Billboard>
         </group>
 
         {/* Board Cards */}

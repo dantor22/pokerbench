@@ -241,38 +241,36 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
         {/* Control Panel (Left) */}
         <div className="control-panel mb-0 h-full flex flex-col gap-4">
           <div className="flex-responsive-tight">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-1">
-                <button onClick={handlePrevHand} className="btn-control" style={{ marginRight: '4px' }} title="Previous Hand"><SkipBack size={14} /></button>
-                <button onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))} className="btn-control" title="Previous Step"><Rewind size={14} /></button>
+            <div className="flex items-center gap-1">
+              <button onClick={handlePrevHand} className="btn-control" style={{ marginRight: '4px' }} title="Previous Hand"><SkipBack size={14} /></button>
+              <button onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))} className="btn-control" title="Previous Step"><Rewind size={14} /></button>
 
-                <div style={{ margin: '0 4px' }}>
-                  <button
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className="btn-play"
-                    title={isPlaying ? "Pause" : "Play"}
-                  >
-                    {isPlaying ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white" style={{ marginLeft: '3px' }} />}
-                  </button>
-                </div>
-
-                <button onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))} className="btn-control" title="Next Step"><FastForward size={14} /></button>
-                <button onClick={handleNextHand} className="btn-control" style={{ marginLeft: '4px' }} title="Next Hand"><SkipForward size={14} /></button>
+              <div style={{ margin: '0 4px' }}>
+                <button
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="btn-play"
+                  title={isPlaying ? "Pause" : "Play"}
+                >
+                  {isPlaying ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white" style={{ marginLeft: '3px' }} />}
+                </button>
               </div>
 
-              <div className="flex items-center gap-3" style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '0.375rem', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                <span className="text-xs font-bold text-slate-400 px-2 lg-visible">SPEED</span>
-                <div className="flex gap-2">
-                  {[1, 2, 5].map(speed => (
-                    <button
-                      key={speed}
-                      onClick={() => setPlaybackSpeed(speed)}
-                      className={`speed-toggle ${playbackSpeed === speed ? 'active' : ''}`}
-                    >
-                      {speed}x
-                    </button>
-                  ))}
-                </div>
+              <button onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))} className="btn-control" title="Next Step"><FastForward size={14} /></button>
+              <button onClick={handleNextHand} className="btn-control" style={{ marginLeft: '4px' }} title="Next Hand"><SkipForward size={14} /></button>
+            </div>
+
+            <div className="flex items-center gap-3" style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '0.375rem', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+              <span className="text-xs font-bold text-slate-400 px-2 lg-visible">SPEED</span>
+              <div className="flex gap-2">
+                {[0.5, 1, 2, 5].map(speed => (
+                  <button
+                    key={speed}
+                    onClick={() => setPlaybackSpeed(speed)}
+                    className={`speed-toggle ${playbackSpeed === speed ? 'active' : ''}`}
+                  >
+                    {speed}x
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -302,7 +300,7 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
             <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
 
             {/* View Controls Group */}
-            <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-4 shrink-0 flex-wrap sm:flex-nowrap">
               {/* FOV */}
               <div className="flex items-center gap-2">
                 <Eye size={14} className="text-blue-400" />
@@ -333,16 +331,16 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
                   style={{ width: '60px', height: '4px' }}
                 />
               </div>
+
+              <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
+
+              <button
+                onClick={() => { setFov(35); setZoom(0.6); }}
+                className="text-xs font-bold text-slate-400 hover:text-white transition-colors shrink-0 px-2 py-1 rounded hover:bg-white/5"
+              >
+                Reset
+              </button>
             </div>
-
-            <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
-
-            <button
-              onClick={() => { setFov(35); setZoom(0.6); }}
-              className="text-xs font-bold text-slate-400 hover:text-white transition-colors shrink-0"
-            >
-              Reset
-            </button>
           </div>
         </div>
 
