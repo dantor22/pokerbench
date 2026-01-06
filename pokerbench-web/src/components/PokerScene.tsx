@@ -140,17 +140,24 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
 
               {/* Action Badge - Absolute positioned above using inline styles for robustness */}
               {data.isAction && data.currentAction && (
-                <div
-                  className="absolute px-3 py-1 rounded-full font-black text-xs tracking-wider shadow-[0_0_15px_rgba(0,0,0,0.5)] transform animate-in zoom-in duration-300 whitespace-nowrap"
-                  style={{
-                    top: '-30px', /* Lowered by 30px as requested */
-                    backgroundColor: data.currentAction === 'fold' ? '#dc2626' : data.currentAction === 'check' ? '#10b981' : '#f59e0b',
-                    color: (data.currentAction === 'fold' || data.currentAction === 'check') ? 'white' : 'black',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    textTransform: 'uppercase'
-                  }}
+                <div 
+                  className="absolute left-1/2 -translate-x-1/2 w-max z-10 pointer-events-none"
+                  style={{ top: '-34px' }}
                 >
-                  {data.currentAction}
+                  <div
+                    className="flex items-center gap-1 px-3 py-1 rounded-full font-black text-xs tracking-wider shadow-[0_0_15px_rgba(0,0,0,0.5)] transform animate-in zoom-in duration-300 whitespace-nowrap"
+                    style={{
+                      backgroundColor: data.currentAction === 'fold' ? '#dc2626' : data.currentAction === 'check' ? '#10b981' : '#f59e0b',
+                      color: (data.currentAction === 'fold' || data.currentAction === 'check') ? 'white' : 'black',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    <span>{data.currentAction}</span>
+                    {['bet', 'call', 'raise', 'all-in'].includes(data.currentAction.toLowerCase()) && data.bet > 0 && (
+                      <span>${data.bet.toLocaleString()}</span>
+                    )}
+                  </div>
                 </div>
               )}
 
