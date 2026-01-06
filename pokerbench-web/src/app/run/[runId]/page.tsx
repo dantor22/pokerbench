@@ -30,7 +30,7 @@ export default async function RunPage({ params }: PageProps) {
           <RunSelector runs={runs} currentRunId={decodedRunId} />
         </div>
         <div className="card text-red">
-          Error loading summary for run {decodedRunId}.
+          Error loading summary for run {decodedRunId.replace(/_/g, ' ')}.
         </div>
       </div>
     );

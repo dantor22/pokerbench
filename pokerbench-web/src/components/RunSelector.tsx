@@ -31,7 +31,7 @@ export default function RunSelector({ runs, currentRunId }: RunSelectorProps) {
         >
           {runs.map((run) => (
             <option key={run} value={run} style={{ background: '#0f172a' }}>
-              {run}
+              {run.replace(/_/g, ' ')}
             </option>
           ))}
         </select>

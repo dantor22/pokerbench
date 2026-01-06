@@ -65,9 +65,10 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
                   key={gameId}
                   href={`${basePath}/game/${gameId}`}
                   className="game-card group block"
+                  prefetch={false}
                 >
                   <div className="flex justify-between items-center p-2">
-                    <span className="font-mono text-lg">{gameId}</span>
+                    <span className="font-mono text-lg">{gameId.replace(/_/g, ' ')}</span>
                     <ArrowRight className="w-5 h-5 arrow-icon" />
                   </div>
                 </Link>

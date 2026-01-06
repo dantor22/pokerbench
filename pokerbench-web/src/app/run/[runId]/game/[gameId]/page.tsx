@@ -31,7 +31,7 @@ export default async function RunGamePage({ params }: PageProps) {
           Back to Run Dashboard
         </Link>
         <span className="text-muted">|</span>
-        <h1 className="text-xl font-bold">Game {game.game_id} <span className="text-sm font-normal text-muted">({decodedRunId})</span></h1>
+        <h1 className="text-xl font-bold">Game {game.game_id.replace(/_/g, ' ')} <span className="text-sm font-normal text-muted">({decodedRunId.replace(/_/g, ' ')})</span></h1>
       </div>
 
       <GameSimulator game={game} />
