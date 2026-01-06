@@ -1,6 +1,6 @@
 # PokerBench: A Longitudinal Multi-Agent Framework for Evaluating Strategic Coherence and Game Theory Optimal (GTO) Adherence in Large Language Models
 
-![](runs/Large_Models/stack_history.png)
+![](runs/Gemini_Flash_and_Pro_Heads_Up/stack_history.png)
 
 ## The Imperative for Dynamic Evaluation in Imperfect-Information Domains
 
