@@ -19,7 +19,7 @@ interface RunDashboardProps {
 
 export default function RunDashboard({ summary, gameIds, runs, runId, totalGames, totalHands }: RunDashboardProps) {
   const [enrichedLeaderboard, setEnrichedLeaderboard] = useState<PlayerStats[]>(summary.leaderboard);
-  const [enrichedStacks, setEnrichedStacks] = useState<Record<string, { mean: number[], low: number[], high: number[] }>>({});
+  const [enrichedStacks, setEnrichedStacks] = useState<Record<string, { mean: number[], low: number[], high: number[], individual?: number[][] }>>({});
   const [isEnriching, setIsEnriching] = useState(false);
   const [showStats, setShowStats] = useState(false);
 
@@ -85,7 +85,7 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
         }));
 
         // Compute stats for chart
-        const newEnrichedStacks: Record<string, { mean: number[], low: number[], high: number[] }> = {};
+        const newEnrichedStacks: Record<string, { mean: number[], low: number[], high: number[], individual?: number[][] }> = {};
         Object.keys(stacksMap).forEach(player => {
           const gameHistories = stacksMap[player];
           if (gameHistories.length === 0) return;
@@ -109,7 +109,7 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
             highs.push(mean + ci);
           }
 
-          newEnrichedStacks[player] = { mean: means, low: lows, high: highs };
+          newEnrichedStacks[player] = { mean: means, low: lows, high: highs, individual: gameHistories };
         });
 
         setEnrichedLeaderboard(newLeaderboard);

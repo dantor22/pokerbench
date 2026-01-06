@@ -16,7 +16,7 @@ export interface Summary {
   total_games: number;
   leaderboard: PlayerStats[];
   aggregated_stacks: Record<string, number[]>;
-  enriched_stacks?: Record<string, { mean: number[], low: number[], high: number[] }>;
+  enriched_stacks?: Record<string, { mean: number[], low: number[], high: number[], individual?: number[][] }>;
 }
 
 export interface Action {
