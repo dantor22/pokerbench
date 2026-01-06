@@ -72,8 +72,12 @@ export async function getSummary(runId?: string): Promise<Summary | null> {
         // but let's be safe.
     }
 
+    console.log(`Fetching summary from: ${url}`);
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (!response.ok) {
+        console.error(`Failed to fetch summary from ${url}: ${response.status} ${response.statusText}`);
+        return null;
+    }
     return await response.json();
   } catch (error) {
     console.error(`Error loading summary for ${runId}:`, error);

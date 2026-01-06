@@ -4,17 +4,21 @@ const path = require('path');
 const SOURCE_DIR = path.resolve(__dirname, '../../runs');
 const DEST_DIR = path.resolve(__dirname, '../public/data/runs');
 const MANIFEST_PATH = path.resolve(__dirname, '../src/data/manifest.json');
+const PUBLIC_MANIFEST_PATH = path.resolve(__dirname, '../public/data/manifest.json');
 
-// Ensure destination directory exists
-if (!fs.existsSync(DEST_DIR)) {
-  fs.mkdirSync(DEST_DIR, { recursive: true });
+// Ensure destination directories exist
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 }
 
+ensureDir(DEST_DIR);
+ensureDir(path.dirname(MANIFEST_PATH));
+ensureDir(path.dirname(PUBLIC_MANIFEST_PATH));
+
 function copyDir(src, dest) {
-  if (!fs.existsSync(dest)) {
-    fs.mkdirSync(dest, { recursive: true });
-  }
-  
+  ensureDir(dest);
   const entries = fs.readdirSync(src, { withFileTypes: true });
 
   for (const entry of entries) {
@@ -24,7 +28,10 @@ function copyDir(src, dest) {
     if (entry.isDirectory()) {
       copyDir(srcPath, destPath);
     } else {
-      fs.copyFileSync(srcPath, destPath);
+      // Only copy relevant files
+      if (entry.name.endsWith('.json') || entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name === 'README.md') {
+          fs.copyFileSync(srcPath, destPath);
+      }
     }
   }
 }
@@ -32,13 +39,13 @@ function copyDir(src, dest) {
 console.log('Syncing data from', SOURCE_DIR, 'to', DEST_DIR);
 
 try {
-  // 1. Copy all runs
+  // Clear destination first to avoid stale data issues
+  if (fs.existsSync(DEST_DIR)) {
+      fs.rmSync(DEST_DIR, { recursive: true, force: true });
+  }
+  
   copyDir(SOURCE_DIR, DEST_DIR);
 
-  // 2. Generate Manifest
-  // We need a list of runs, for each run, maybe a list of games?
-  // Actually getRuns() just returns top level directories.
-  
   const runDirs = fs.readdirSync(DEST_DIR, { withFileTypes: true })
     .filter(dirent => dirent.isDirectory())
     .map(dirent => dirent.name)
@@ -46,7 +53,6 @@ try {
 
   const manifest = {
     runs: runDirs,
-    // We could pre-calculate game IDs here too to avoid fs entirely for listGames
     games: {}
   };
 
@@ -61,7 +67,10 @@ try {
     manifest.games[runId] = gameIds;
   }
 
-  fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
+  const jsonContent = JSON.stringify(manifest, null, 2);
+  fs.writeFileSync(MANIFEST_PATH, jsonContent);
+  fs.writeFileSync(PUBLIC_MANIFEST_PATH, jsonContent);
+  
   console.log('Manifest generated at', MANIFEST_PATH);
   console.log('Data sync complete.');
 
