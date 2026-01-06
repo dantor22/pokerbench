@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import { formatModelName, MODEL_CONFIG, getModelColor } from '../lib/constants';
 import { ChartCustomDot } from './ChartCustomDot';
@@ -66,6 +67,7 @@ export default function AggregatedProgressChart({ data }: ProgressChartProps) {
               padding={{ top: 30, bottom: 30 }}
               domain={['auto', 'auto']}
             />
+            <ReferenceLine y={10000} stroke="#475569" strokeDasharray="3 3" label={{ value: '$10k', position: 'right', fill: '#64748b', fontSize: 10 }} />
             <Tooltip
               contentStyle={{
                 backgroundColor: '#1e293b',

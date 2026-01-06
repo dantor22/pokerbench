@@ -12,7 +12,8 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  ReferenceLine
 } from 'recharts';
 
 interface StackSizeChartProps {
@@ -99,6 +100,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
               axisLine={false}
               tickFormatter={(value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             />
+            <ReferenceLine y={10000} stroke="#475569" strokeDasharray="3 3" label={{ value: '$10k', position: 'right', fill: '#64748b', fontSize: 10 }} />
             <Tooltip
               contentStyle={{
                 backgroundColor: '#0f172a',
