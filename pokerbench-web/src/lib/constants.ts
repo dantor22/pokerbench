@@ -13,6 +13,9 @@ export const MODEL_NAME_MAPPING: Record<string, string> = {
   "claude": "Opus 4.5",
   "fivetwo": "GPT-5.2",
   "elon": "Grok 4.1 Fast Reasoning",
+
+
+
   "flash": "Gemini 3 Flash"
 };
 

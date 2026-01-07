@@ -108,7 +108,7 @@ export default function Avatar({ name, isActive, isAction, isDealer }: AvatarPro
 
       {/* Action Indicator Ring (Halo) */}
       {isAction && (
-        <mesh position={[0, 2.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <mesh position={[0, 2.5, 0]} rotation={[Math.PI / 2, 0, 0]} data-testid="action-halo">
           <torusGeometry args={[1.4, 0.1, 16, 64]} />
           <meshStandardMaterial color="#60a5fa" emissive="#60a5fa" emissiveIntensity={3} />
         </mesh>
