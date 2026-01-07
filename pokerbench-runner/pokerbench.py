@@ -13,7 +13,7 @@ Key Features:
 
 Example run command:
 
-python3 pokerbench_parallel.py --hands 150 --games 5
+python3 pokerbench.py --hands 150 --games 5
 
 Provide --debug to directly inspect LLM requests/responses.
 
