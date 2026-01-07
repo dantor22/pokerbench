@@ -19,7 +19,7 @@ The primary objective of PokerBench is to quantify the "Strategic Coherence" of 
 | **Resource Scarcity** | Optimizing chip stack utility (Expected Value) under ruin risk. |
 | **Adversarial Adaptation** | Adjusting strategy based on opponent "tilt" or aggression levels. |
 
-The benchmark simulates a large number of independent games, each lasting 150 hands or until one player accumulates all chips. This scale is necessary to dampen the extreme variance inherent in NLTH and achieve statistical significance in the primary metric: Big Blinds won per 100 hands (BB/100) [cite: 3].
+The benchmark simulates a large number of independent games, each lasting 150 hands or until one player accumulates all chips. This scale is necessary to dampen the extreme variance inherent in NLTH and achieve statistical significance in the primary metric: stack size [cite: 3].
 
 ## Important Notes
 
