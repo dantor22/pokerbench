@@ -1,0 +1,7 @@
+pokerkit
+litellm
+matplotlib
+numpy
+tenacity
+pytest
+flake8
