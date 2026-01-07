@@ -79,7 +79,7 @@ export default function Footer() {
                 <h3 className="text-2xl font-bold">Support PokerBench</h3>
                 
                 <p className="text-slate-300 leading-relaxed">
-                  Over <span className="text-green-400 font-bold">$1000</span> was
+                  Over <span className="text-green-400 font-bold">$1500</span> was
                   spent running PokerBench (thanks Opus!).
                 </p>
                 
