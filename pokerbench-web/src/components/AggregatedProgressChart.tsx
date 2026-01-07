@@ -11,8 +11,10 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { formatModelName, getModelColor } from '../lib/constants';
+import { formatModelName, getModelColor, getEffortSuffix } from '../lib/constants';
 import { ChartCustomDot } from './ChartCustomDot';
+
+
 
 interface ProgressChartProps {
   data: Record<string, number[]>;
@@ -179,7 +181,7 @@ export default function AggregatedProgressChart({
                     />
                   ))}
                   <Line
-                    name={formatModelName(player)}
+                    name={actuallyShowStats ? `${formatModelName(player)}${getEffortSuffix(player)}` : formatModelName(player)}
                     type="monotone"
                     dataKey={dataKey}
                     stroke={color}

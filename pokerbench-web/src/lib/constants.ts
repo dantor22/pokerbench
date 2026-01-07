@@ -40,3 +40,10 @@ export function getModelColor(name: string): string {
   return MODEL_CONFIG[name]?.color || '#94a3b8';
 }
 
+// Bit of a hack as we're not currently encoding the reasoning effort config into the JSON.
+export function getEffortSuffix(modelKey: string): string {
+  const key = modelKey.toLowerCase();
+  if (key === 'claude') return ' (medium)';
+  if (key === 'elon') return '';
+  return ' (high)';
+}

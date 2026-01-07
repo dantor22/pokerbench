@@ -1,5 +1,5 @@
 import { PlayerStats } from '../lib/types';
-import { formatModelName } from '../lib/constants';
+import { formatModelName, getEffortSuffix } from '../lib/constants';
 
 interface LeaderboardProps {
   data: PlayerStats[];
@@ -49,7 +49,10 @@ export default function Leaderboard({ data, showStats = false }: LeaderboardProp
 
               return (
                 <tr key={player.name}>
-                  <td className="font-bold">{formatModelName(player.name)}</td>
+                  <td className="font-bold">
+                    {formatModelName(player.name)}
+                    {showStats && <span className="text-muted font-normal text-xs">{getEffortSuffix(player.name)}</span>}
+                  </td>
                   <td className="text-right">{player.win_rate.toFixed(1)}%</td>
                   <td className="text-right">{player.total_hands}</td>
                   <td className={`text-right ${player.avg_profit >= 0 ? 'text-green' : 'text-red'}`}>
