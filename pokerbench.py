@@ -67,8 +67,8 @@ os.makedirs(DEBUG_DIR, exist_ok=True)
 STREET_NAMES = {0: "PRE-FLOP", 1: "FLOP", 2: "TURN", 3: "RIVER"}
 
 SYSTEM_PROMPT_TEMPLATE = """
-You are a world-class professional poker player competing in the PokerBench High Roller Tournament. 
-Your goal is to maximize your stack size over {total_hands} hands. You are playing 50/100 No-Limit Texas Hold'em.
+You are a world-class professional poker player competing in the PokerBench Cash Game.
+Your goal is to maximize your stack over {total_hands} hands. You are playing 50/100 No-Limit Texas Hold'em.
 
 OUTPUT FORMAT:
 You must output a JSON object adhering to the provided schema.
@@ -391,7 +391,7 @@ class PokerBenchRunner:
         base_prompt = f"""
 === PREVIOUS HANDS ===
 {past_hands_context}
-=== TOURNAMENT STATUS ===
+=== GAME STATUS ===
 Current Hand: {current_hand_idx} of {self.num_hands}
 Active Players: {len(self.models)}
 === CURRENT HAND LOG ===
