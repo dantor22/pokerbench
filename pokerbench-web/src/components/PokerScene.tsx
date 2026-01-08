@@ -145,7 +145,7 @@ const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerSt
                   style={{ top: '-34px' }}
                 >
                   <div
-                    className="flex items-center gap-1 px-3 py-1 rounded-full font-black text-xs tracking-wider shadow-[0_0_15px_rgba(0,0,0,0.5)] transform animate-in zoom-in duration-300 whitespace-nowrap"
+                    className="flex items-center gap-1 px-3 py-1 rounded-full font-black text-xs tracking-wider shadow-[0_0_15px_rgba(0,0,0,0.5)] transform animate-in zoom-in duration-300 whitespace-nowrap overflow-hidden"
                     style={{
                       backgroundColor: data.currentAction === 'fold' ? '#dc2626' : data.currentAction === 'check' ? '#10b981' : '#f59e0b',
                       color: (data.currentAction === 'fold' || data.currentAction === 'check') ? 'white' : 'black',
