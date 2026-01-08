@@ -57,14 +57,8 @@ function computeStats(runPath) {
 
     game.hands.forEach(hand => {
       playersInGame.forEach(p => {
-        // In the original TS code:
-        // const res = hand.results.find(r => r.player === p);
-        // if (res) gameStacks[p].push((hand.pre_hand_stacks[p] ?? 0) + res.net_gain);
-        
         // We need to be careful with pre_hand_stacks. 
-        // If it's undefined, we should probably assume previous stack? 
-        // But the original code used (hand.pre_hand_stacks[p] ?? 0)
-        // Let's stick to the original logic.
+        // If it's undefined, we should use the tracked stack.
         
         let res = null;
         if (hand.results) {
@@ -73,11 +67,12 @@ function computeStats(runPath) {
 
         const prevStack = gameStacks[p][gameStacks[p].length - 1];
         if (res) {
+          // If pre_hand_stacks provided, use it (simulation source of truth).
+          // Fallback to prevStack if missing, NOT 0.
           const preStack = (hand.pre_hand_stacks && hand.pre_hand_stacks[p] !== undefined) 
                             ? hand.pre_hand_stacks[p] 
-                            : 0; // Wait, if pre_hand_stacks[p] is missing, 0 might be wrong if they have chips?
-                           // But usually pre_hand_stacks is populated.
-                           
+            : prevStack; 
+
           gameStacks[p].push(preStack + res.net_gain);
         } else {
           gameStacks[p].push(prevStack);
@@ -120,9 +115,12 @@ function computeStats(runPath) {
     if (ranks.length === 0) return;
     const n = ranks.length;
     const mean = ranks.reduce((a, b) => a + b, 0) / n;
-    const variance = ranks.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+    // Use Sample Variance (n-1) if possible
+    const variance = (n > 1)
+      ? ranks.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1)
+      : 0;
     const stdDev = Math.sqrt(variance);
-    const stderr = stdDev / Math.sqrt(n);
+    const stderr = (n > 0) ? stdDev / Math.sqrt(n) : 0;
     // 95% CI
     playerRanks[p] = { avg: mean, stdDev, ci: 1.96 * stderr };
   });
@@ -145,9 +143,12 @@ function computeStats(runPath) {
         
         const n = values.length;
         const mean = values.reduce((a, b) => a + b, 0) / n;
-        const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+      // Use Sample Variance (n-1) if possible
+      const variance = (n > 1)
+        ? values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1)
+        : 0;
         const stdDev = Math.sqrt(variance);
-        const stderr = stdDev / Math.sqrt(n);
+      const stderr = (n > 0) ? stdDev / Math.sqrt(n) : 0;
         const ci = 1.96 * stderr;
 
         means.push(mean);
