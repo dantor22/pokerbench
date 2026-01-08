@@ -37,6 +37,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [fov, setFov] = useState(35);
   const [zoom, setZoom] = useState(0.6);
+  const [sceneReady, setSceneReady] = useState(false);
 
   const currentHand = game.hands[currentHandIndex];
   const steps = useMemo(() => {
@@ -225,18 +226,22 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
           </div>
         </div>
 
-        <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}>
-          <CameraUpdater fov={fov} />
-          <Suspense fallback={
-            <Html center>
-              <div className="flex flex-col items-center gap-4 bg-black/60 backdrop-blur-md p-8 rounded-2xl border border-white/10 shadow-2xl">
+
+        {/* Persistent Loading Overlay - Fades out only when Scene is actually ready */}
+        {!sceneReady && (
+          <div className="loading-overlay">
+            <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-10 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
                 <div className="text-blue-400 font-bold tracking-widest text-sm uppercase animate-pulse">
                   Loading...
                 </div>
               </div>
-            </Html>
-          }>
+          </div>
+        )}
+
+        <Suspense fallback={null}>
+          <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}>
+            <CameraUpdater fov={fov} />
             <PokerScene
               players={gameState.players}
               board={gameState.board}
@@ -244,9 +249,10 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               dealerIndex={gameState.dealerIndex}
               zoomLevel={zoom}
               onZoomChange={setZoom}
+              onSceneReady={() => setSceneReady(true)}
             />
-          </Suspense>
-        </Canvas>
+          </Canvas>
+        </Suspense>
       </div>
 
       <div className="layout-split mb-0">

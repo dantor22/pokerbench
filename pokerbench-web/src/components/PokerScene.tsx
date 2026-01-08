@@ -1,7 +1,7 @@
 'use client';
 
 import { Html, OrbitControls, Billboard } from '@react-three/drei';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import Table from './poker/Table';
@@ -33,12 +33,12 @@ interface PokerSceneProps {
   dealerIndex: number;
 }
 
-const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: number; totalPlayers: number }) => {
+const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerState; index: number; totalPlayers: number; tableScale: number }) => {
   const badgeRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
   // Table radius is ~11. Players sit at ~14.
-  const radius = 14;
+  const radius = 14 * tableScale;
   const angle = (index / totalPlayers) * Math.PI * 2 + Math.PI / 2;
   const x = Math.cos(angle) * radius;
   const z = Math.sin(angle) * radius;
@@ -79,7 +79,7 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
 
         {/* Folded Cards - Face Down on Table (Felt is ~ 0.01 in local space) */}
         {data.isFolded && data.cards.length > 0 && (
-          <group position={[0, 0.08, -6]}>
+          <group position={[0, 0.08, -6 * tableScale]}>
             <Card
               card={data.cards[0]}
               position={[-0.5, 0, 0]}
@@ -98,7 +98,7 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
         {/* Player Stack - On table, to the right. Adjusted to avoid rail clipping (Rail starts at R=10.7) */}
         {/* Player R=14, z=-4.2 -> R=9.8. With x=1.0, R_eff ~9.85. Safe from rail. */}
         {data.stack > 0 && (
-          <group position={[1.0, 0, -4.2]} rotation={[0, -0.2, 0]}>
+          <group position={[1.0 * tableScale, 0, -4.2 * tableScale]} rotation={[0, -0.2, 0]}>
             <ChipStack amount={data.stack} position={[0, 0, 0]} />
           </group>
         )}
@@ -106,13 +106,13 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
         {/* Dealer Button - Next to stack */}
         {data.isDealer && (
           // Positioned slightly to the right of the stack (x=1.6 vs x=1.0) - moved to 2.2 to avoid clipping
-          <DealerButton position={[2.2, 0, -4.2]} />
+          <DealerButton position={[2.2 * tableScale, 0, -4.2 * tableScale]} />
         )}
 
 
         {/* Bets - Further in, on the felt (R<9) */}
         {data.bet > 0 && (
-          <group position={[0, 0, -6.0]}>
+          <group position={[0, 0, -6.0 * tableScale]}>
             <ChipStack amount={data.bet} position={[0, 0, 0]} />
           </group>
         )}
@@ -187,11 +187,18 @@ const PlayerGroup = ({ data, index, totalPlayers }: { data: PlayerState; index: 
   );
 };
 
-export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void }) {
+export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange, onSceneReady }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void; onSceneReady?: () => void }) {
   const potBadgeRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const ZOOM_CONSTANT = 18.6;
+
+  const tableScale = useMemo(() => {
+    if (players.length <= 2) return 0.75;
+    if (players.length <= 4) return 0.85;
+    if (players.length <= 6) return 0.95;
+    return 1.0;
+  }, [players.length]);
 
   // Adaptive scaling for POT
   useFrame(() => {
@@ -206,6 +213,13 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
     // Manually ensure controls are updated to avoid black screen start
     if (controlsRef.current) {
       controlsRef.current.update();
+    }
+    // Signal that the scene is mounted and controls are ready
+    if (onSceneReady) {
+      // Small timeout to allow one frame of rendering
+      requestAnimationFrame(() => {
+        onSceneReady();
+      });
     }
   }, []);
 
@@ -252,7 +266,7 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
 
       {/* Center Table Group */}
       <group position={[0, -2, 0]}>
-        <Table />
+        <Table scale={tableScale} />
 
         <group position={[0, 0.1, 0]}>
           <ChipStack amount={pot} position={[0, 0, 0]} />
@@ -273,7 +287,7 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
         </group>
 
         {/* Board Cards */}
-        <group position={[0, 0.2, 3]}>
+        <group position={[0, 0.2, 3 * tableScale]}>
           {board.map((card, i) => (
             <Card
               key={i}
@@ -286,7 +300,7 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
 
         {/* Players */}
         {players.map((player, i) => (
-          <PlayerGroup key={player.name} data={player} index={i} totalPlayers={players.length} />
+          <PlayerGroup key={player.name} data={player} index={i} totalPlayers={players.length} tableScale={tableScale} />
         ))}
       </group>
 

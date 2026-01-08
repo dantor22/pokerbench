@@ -19,18 +19,33 @@ export const ChartCustomDot = (props: any) => {
       <g style={{ pointerEvents: 'none' }}>
         {/* White background circle to make logo pop */}
         <circle cx={shiftedCx} cy={cy} r={r} fill="white" stroke={stroke} strokeWidth={2} />
-        {/* The SVG Logo */}
-        <image 
+        {/* Use foreignObject and img for better filter support on mobile Safari */}
+        <foreignObject 
           x={shiftedCx - offset} 
           y={cy - offset} 
           width={size} 
-          height={size} 
-          href={config.logo} 
-          style={{ 
-            filter: config.logoInvert ? 'invert(100%)' : 'none',
-            WebkitFilter: config.logoInvert ? 'invert(100%)' : 'none'
-          }}
-        />
+          height={size}
+        >
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <img
+              src={config.logo}
+              alt=""
+              style={{ 
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                filter: config.logoInvert ? 'brightness(0)' : 'none',
+                WebkitFilter: config.logoInvert ? 'brightness(0)' : 'none'
+              }}
+            />
+          </div>
+        </foreignObject>
       </g>
     );
   }

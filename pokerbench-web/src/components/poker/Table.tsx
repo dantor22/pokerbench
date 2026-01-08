@@ -33,9 +33,9 @@ function CurvedText({ text, radius = 6.5, spacing = 0.12, ...props }: { text: st
   );
 }
 
-export default function Table() {
+export default function Table({ scale = 1 }: { scale?: number }) {
   return (
-    <group>
+    <group scale={[scale, 1, scale]}>
       {/* Table Main Body/Substructure */}
       <mesh position={[0, -0.4, 0]} receiveShadow>
         <cylinderGeometry args={[11.2, 11, 0.4, 64]} />

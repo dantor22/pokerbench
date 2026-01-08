@@ -12,11 +12,13 @@ export default function Loading() {
         <div className="h-8 w-48 bg-white/5 animate-pulse rounded" />
       </div>
 
-      <div className="card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container flex flex-col items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-          <div className="text-blue-400 font-bold tracking-widest text-sm uppercase animate-pulse">
-            Loading...
+      <div className="card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container">
+        <div className="loading-overlay">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+            <div className="text-blue-400 font-bold tracking-widest text-sm uppercase animate-pulse">
+              Loading...
+            </div>
           </div>
         </div>
       </div>
