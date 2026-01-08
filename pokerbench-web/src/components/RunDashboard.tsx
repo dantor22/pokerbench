@@ -24,7 +24,11 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
     if (initialStats) {
       return summary.leaderboard.map(p => ({
         ...p,
-        profits: initialStats.profits[p.name] || []
+        profits: initialStats.profits[p.name] || [],
+        vpip: initialStats.playerStats?.[p.name]?.vpip || 0,
+        pfr: initialStats.playerStats?.[p.name]?.pfr || 0,
+        three_bet: initialStats.playerStats?.[p.name]?.three_bet || 0,
+        c_bet: initialStats.playerStats?.[p.name]?.c_bet || 0,
       }));
     }
     return summary.leaderboard;
@@ -90,7 +94,11 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
         if (stats) {
           const newLeaderboard = summary.leaderboard.map(p => ({
             ...p,
-            profits: stats.profits[p.name] || []
+            profits: stats.profits[p.name] || [],
+            vpip: stats.playerStats?.[p.name]?.vpip || 0,
+            pfr: stats.playerStats?.[p.name]?.pfr || 0,
+            three_bet: stats.playerStats?.[p.name]?.three_bet || 0,
+            c_bet: stats.playerStats?.[p.name]?.c_bet || 0,
           }));
           setEnrichedLeaderboard(newLeaderboard);
           setEnrichedStacks(stats.stacks);
@@ -183,7 +191,11 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
         // Compute stats for leaderboard
         const newLeaderboard = summary.leaderboard.map(p => ({
           ...p,
-          profits: profitsMap[p.name] || []
+          profits: profitsMap[p.name] || [],
+          vpip: 0, // Fallback client-side calculation not fully implemented for performance
+          pfr: 0,
+          three_bet: 0,
+          c_bet: 0
         }));
 
         setPlayerRanks(newPlayerRanks);

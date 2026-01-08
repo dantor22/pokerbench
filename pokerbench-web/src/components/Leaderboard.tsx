@@ -40,6 +40,14 @@ export default function Leaderboard({ data, showStats = false, runId, showRank =
                   WR
                 </span>
               </th>
+              {showStats && (
+                <>
+                  <th className="text-right cursor-help border-b border-dotted border-current opacity-80" title="Voluntarily Put In Pot: % of hands where the player called or raised pre-flop">VPIP</th>
+                  <th className="text-right cursor-help border-b border-dotted border-current opacity-80" title="Pre-Flop Raise: % of hands where the player raised pre-flop">PFR</th>
+                  <th className="text-right cursor-help border-b border-dotted border-current opacity-80" title="3-Bet: % of hands where the player re-raised pre-flop">3B</th>
+                  <th className="text-right cursor-help border-b border-dotted border-current opacity-80" title="C-Bet: Continuation Bet frequency on the flop after being the pre-flop aggressor">CB</th>
+                </>
+              )}
               <th className="text-right">Hands</th>
               <th className="text-right">
                 {showRank ? (
@@ -85,6 +93,14 @@ export default function Leaderboard({ data, showStats = false, runId, showRank =
                       {player.win_rate.toFixed(1)}%
                     </span>
                   </td>
+                  {showStats && (
+                    <>
+                      <td className="text-right">{player.vpip?.toFixed(1)}%</td>
+                      <td className="text-right">{player.pfr?.toFixed(1)}%</td>
+                      <td className="text-right">{player.three_bet?.toFixed(1)}%</td>
+                      <td className="text-right">{player.c_bet?.toFixed(1)}%</td>
+                    </>
+                  )}
                   <td className="text-right">{player.total_hands}</td>
                   <td className={`text-right ${showRank ? 'text-slate-100' : (player.avg_profit >= 0 ? 'text-green' : 'text-red')}`}>
                     <div className="flex flex-col items-end">

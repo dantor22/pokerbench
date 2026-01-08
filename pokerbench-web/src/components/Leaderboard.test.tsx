@@ -35,10 +35,26 @@ describe('Leaderboard', () => {
     expect(rows[2]).toHaveTextContent('Opus 4.5');
   });
 
-  it('shows effort suffix when showStats is true', () => {
-    render(<Leaderboard data={mockData as any} showStats={true} />);
-    expect(screen.getByText('(medium)')).toBeInTheDocument();
-    expect(screen.getByText('(high)')).toBeInTheDocument();
+  it('shows effort suffix and new poker stats when showStats is true', () => {
+    const dataWithStats = [
+      { ...mockData[0], vpip: 25.5, pfr: 18.2, three_bet: 8.5, c_bet: 70.0 },
+      { ...mockData[1], vpip: 30.0, pfr: 20.0, three_bet: 10.0, c_bet: 60.0 },
+    ];
+    render(<Leaderboard data={dataWithStats as any} showStats={true} />);
+    expect(screen.getByText(/high/)).toBeInTheDocument();
+    expect(screen.getByText(/medium/)).toBeInTheDocument();
+
+    // Check headers
+    expect(screen.getByText('VPIP')).toBeInTheDocument();
+    expect(screen.getByText('PFR')).toBeInTheDocument();
+    expect(screen.getByText('3B')).toBeInTheDocument();
+    expect(screen.getByText('CB')).toBeInTheDocument();
+
+    // Check values
+    expect(screen.getByText('25.5%')).toBeInTheDocument();
+    expect(screen.getByText('18.2%')).toBeInTheDocument();
+    expect(screen.getByText('8.5%')).toBeInTheDocument();
+    expect(screen.getByText('70.0%')).toBeInTheDocument();
   });
 
   it('renders win rate tooltip', () => {

@@ -9,6 +9,7 @@ import PokerScene from './PokerScene';
 import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOut, Eye, List } from 'lucide-react';
 import GameTimeline from './GameTimeline';
 import StackSizeChart from './StackSizeChart';
+import GameStats from './GameStats';
 import { calculateWinProbabilities } from '../lib/poker-engine';
 
 function CameraUpdater({ fov }: { fov: number }) {
@@ -434,6 +435,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         }}
       />
       <StackSizeChart game={game} currentHandIndex={currentHandIndex} runId={runId} />
+      <GameStats game={game} currentHandIndex={currentHandIndex} runId={runId} />
     </div>
   );
 }

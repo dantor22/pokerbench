@@ -9,6 +9,10 @@ export interface PlayerStats {
   total_cost: number;
   avg_cost_per_decision: number;
   avg_reasoning_tokens: number;
+  vpip: number;
+  pfr: number;
+  three_bet: number;
+  c_bet: number;
 }
 
 export interface Summary {
@@ -78,4 +82,5 @@ export interface RunStats {
   profits: Record<string, number[]>;
   stacks: Record<string, EnrichedStackStats>;
   ranks: Record<string, PlayerRankStats>;
+  playerStats?: Record<string, { vpip: number; pfr: number; three_bet: number; c_bet: number }>;
 }

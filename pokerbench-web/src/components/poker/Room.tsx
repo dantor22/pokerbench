@@ -1,6 +1,6 @@
 import { Environment, MeshReflectorMaterial, Instance, Instances, Float } from '@react-three/drei';
 import * as THREE from 'three';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 // --- Procedural Textures ---
 
@@ -82,10 +82,10 @@ const Pillar = ({ position }: { position: [number, number, number] }) => (
 );
 
 const SlotMachine = ({ position, rotation = [0, 0, 0] }: { position: [number, number, number], rotation?: [number, number, number] }) => {
-  const screenColor = useMemo(() => {
+  const [screenColor] = useState(() => {
     const hues = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308'];
     return hues[Math.floor(Math.random() * hues.length)];
-  }, []);
+  });
 
   return (
     <group position={position} rotation={new THREE.Euler(...rotation)}>
