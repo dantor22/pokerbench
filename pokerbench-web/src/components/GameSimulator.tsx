@@ -418,7 +418,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               <span className="text-xs text-slate-600 uppercase tracking-wider font-mono">{'// WAITING FOR ACTION'}</span>
             )}
           </div>
-          <div className="text-slate-300 text-sm leading-relaxed font-mono whitespace-pre-wrap flex-1 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="text-slate-300 text-sm leading-relaxed font-mono whitespace-pre-wrap flex-1 overflow-y-auto pr-2 custom-scrollbar select-text">
             {gameState.players.find(p => p.thought)?.thought || <span className="text-slate-700 italic">No active thoughts...</span>}
           </div>
         </div>

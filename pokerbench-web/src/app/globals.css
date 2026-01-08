@@ -818,6 +818,10 @@ button:hover {
   user-select: none;
   -webkit-user-select: none;
 }
+.select-text {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
 /* Layout Split used in GameSimulator */
 .layout-split {
   display: flex;
