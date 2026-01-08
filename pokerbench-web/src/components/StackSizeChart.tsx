@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Game } from '../lib/types';
 import { formatModelName, getModelColor } from '../lib/constants';
 import { ChartCustomDot } from './ChartCustomDot';
@@ -29,6 +29,8 @@ const CustomActiveDot = (props: any) => {
 };
 
 export default function StackSizeChart({ game, currentHandIndex, runId }: StackSizeChartProps) {
+  const [isTooltipActive, setIsTooltipActive] = useState(false);
+
   const data = useMemo(() => {
     if (!game.hands || game.hands.length === 0) return [];
 
@@ -83,7 +85,16 @@ export default function StackSizeChart({ game, currentHandIndex, runId }: StackS
       <h3 className="text-sm font-bold mb-4 text-muted uppercase tracking-wider">Stack History</h3>
       <div style={{ width: '100%', height: '240px' }} className="select-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-          <LineChart data={visibleData} margin={{ top: 20, right: 45, left: 0, bottom: 5 }}>
+          <LineChart
+            data={visibleData}
+            margin={{ top: 20, right: 45, left: 0, bottom: 5 }}
+            onMouseMove={(state) => {
+              if (state?.isTooltipActive) setIsTooltipActive(true);
+              else setIsTooltipActive(false);
+            }}
+            onMouseLeave={() => setIsTooltipActive(false)}
+            onTouchEnd={() => setIsTooltipActive(false)}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
             <XAxis
               dataKey="hand"
@@ -104,6 +115,7 @@ export default function StackSizeChart({ game, currentHandIndex, runId }: StackS
             />
             <ReferenceLine y={10000} stroke="#475569" strokeDasharray="3 3" label={{ value: '$10k', position: 'right', fill: '#64748b', fontSize: 10 }} />
             <Tooltip
+              active={isTooltipActive}
               contentStyle={{
                 backgroundColor: '#0f172a',
                 border: '1px solid rgba(255,255,255,0.1)',

@@ -27,7 +27,8 @@ export const ChartCustomDot = (props: any) => {
           height={size} 
           href={config.logo} 
           style={{ 
-            filter: config.logoInvert ? 'invert(1)' : 'none'
+            filter: config.logoInvert ? 'invert(100%)' : 'none',
+            WebkitFilter: config.logoInvert ? 'invert(100%)' : 'none'
           }}
         />
       </g>

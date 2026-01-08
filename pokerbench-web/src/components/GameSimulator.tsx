@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { Game } from '../lib/types';
 import { formatModelName } from '../lib/constants';
 import { Canvas, useThree } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import PokerScene from './PokerScene';
 import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOut, Eye, List } from 'lucide-react';
 import GameTimeline from './GameTimeline';
@@ -226,14 +227,25 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
         <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}>
           <CameraUpdater fov={fov} />
-          <PokerScene
-            players={gameState.players}
-            board={gameState.board}
-            pot={gameState.pot}
-            dealerIndex={gameState.dealerIndex}
-            zoomLevel={zoom}
-            onZoomChange={setZoom}
-          />
+          <Suspense fallback={
+            <Html center>
+              <div className="flex flex-col items-center gap-4 bg-black/60 backdrop-blur-md p-8 rounded-2xl border border-white/10 shadow-2xl">
+                <div className="w-10 h-10 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                <div className="text-blue-400 font-bold tracking-widest text-sm uppercase animate-pulse">
+                  Loading...
+                </div>
+              </div>
+            </Html>
+          }>
+            <PokerScene
+              players={gameState.players}
+              board={gameState.board}
+              pot={gameState.pot}
+              dealerIndex={gameState.dealerIndex}
+              zoomLevel={zoom}
+              onZoomChange={setZoom}
+            />
+          </Suspense>
         </Canvas>
       </div>
 

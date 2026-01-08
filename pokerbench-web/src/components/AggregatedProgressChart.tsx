@@ -42,6 +42,8 @@ export default function AggregatedProgressChart({
   runId
 }: ProgressChartProps) {
 
+  const [isTooltipActive, setIsTooltipActive] = useState(false);
+
   if (!data || Object.keys(data).length === 0) return <div>No data available</div>;
 
   const players = Object.keys(data);
@@ -179,7 +181,16 @@ export default function AggregatedProgressChart({
       
       <div style={{ width: '100%', height: 400 }} className="select-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-          <ComposedChart data={filteredChartData} margin={{ top: 20, right: 45, left: 0, bottom: 30 }}>
+          <ComposedChart
+            data={filteredChartData}
+            margin={{ top: 20, right: 45, left: 0, bottom: 30 }}
+            onMouseMove={(state) => {
+              if (state?.isTooltipActive) setIsTooltipActive(true);
+              else setIsTooltipActive(false);
+            }}
+            onMouseLeave={() => setIsTooltipActive(false)}
+            onTouchEnd={() => setIsTooltipActive(false)}
+          >
             <CartesianGrid vertical={false} stroke="#334155" strokeDasharray="3 3" opacity={0.2} />
             <XAxis
               dataKey="hand"
@@ -208,6 +219,7 @@ export default function AggregatedProgressChart({
               <ReferenceLine y={10000} stroke="#475569" strokeDasharray="3 3" label={{ value: '$10k', position: 'right', fill: '#64748b', fontSize: 10 }} />
             )}
             <Tooltip
+              active={isTooltipActive}
               contentStyle={{
                 backgroundColor: '#1e293b',
                 border: '1px solid #334155',
@@ -215,6 +227,7 @@ export default function AggregatedProgressChart({
                 color: '#f8fafc',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
               }}
+
               formatter={(value: any, name: any) => {
                 if (typeof name === 'string' && (name.endsWith('_range') || name.includes('_traj_'))) return null;
                 const formattedValue = showRank
