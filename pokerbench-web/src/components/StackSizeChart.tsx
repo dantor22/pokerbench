@@ -19,6 +19,7 @@ import {
 interface StackSizeChartProps {
   game: Game;
   currentHandIndex: number;
+  runId?: string;
 }
 
 const CustomActiveDot = (props: any) => {
@@ -27,7 +28,7 @@ const CustomActiveDot = (props: any) => {
   return <circle cx={cx} cy={cy} r={4} fill={fill} strokeWidth={0} />;
 };
 
-export default function StackSizeChart({ game, currentHandIndex }: StackSizeChartProps) {
+export default function StackSizeChart({ game, currentHandIndex, runId }: StackSizeChartProps) {
   const data = useMemo(() => {
     if (!game.hands || game.hands.length === 0) return [];
 
@@ -124,7 +125,7 @@ export default function StackSizeChart({ game, currentHandIndex }: StackSizeChar
             {game.players.map((player) => (
               <Line
                 key={player}
-                name={formatModelName(player)}
+                name={formatModelName(player, runId)}
                 type="monotone"
                 dataKey={player}
                 stroke={getModelColor(player)}

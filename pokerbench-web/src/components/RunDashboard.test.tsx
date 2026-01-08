@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import RunDashboard from './RunDashboard';
 import { getGame } from '../lib/data';
@@ -9,11 +9,21 @@ vi.mock('../lib/data', () => ({
 }));
 
 vi.mock('./AggregatedProgressChart', () => ({
-  default: () => <div data-testid="chart" />
+  default: (props: any) => (
+    <div data-testid="chart">
+      {props.showRank ? 'Rank View' : 'Stack View'}
+      <button onClick={() => props.onToggleRank?.(!props.showRank)}>Toggle Rank</button>
+    </div>
+  )
 }));
 
 vi.mock('./Leaderboard', () => ({
-  default: () => <div data-testid="leaderboard" />
+  default: (props: any) => (
+    <div data-testid="leaderboard">
+      {props.showRank ? 'Rank Leaderboard' : 'Profit Leaderboard'}
+      {props.ranks && <div data-testid="ranks-data">{JSON.stringify(props.ranks)}</div>}
+    </div>
+  )
 }));
 
 vi.mock('./RunSelector', () => ({
@@ -105,5 +115,70 @@ describe('RunDashboard', () => {
     expect(screen.getByText('game 1')).toBeInTheDocument();
     expect(screen.getByText('game 2')).toBeInTheDocument();
     expect(screen.getByText('2 games found')).toBeInTheDocument();
+  });
+
+  it('toggles rank view through the chart component', () => {
+    render(
+      <RunDashboard
+        summary={mockSummary as any}
+        gameIds={mockGameIds}
+        runs={mockRuns}
+        totalGames={10}
+        totalHands={200}
+      />
+    );
+
+    expect(screen.getByText('Stack View')).toBeInTheDocument();
+    expect(screen.getByText('Profit Leaderboard')).toBeInTheDocument();
+
+    const toggleButton = screen.getByText('Toggle Rank');
+    fireEvent.click(toggleButton);
+
+    expect(screen.getByText('Rank View')).toBeInTheDocument();
+    expect(screen.getByText('Rank Leaderboard')).toBeInTheDocument();
+  });
+
+  it('calculates ranks correctly during enrichment', async () => {
+    const mockGame = {
+      config: { start_stack: 10000 },
+      players: ['Player1', 'Player2'],
+      hands: [
+        {
+          results: [
+            { player: 'Player1', net_gain: 500 },
+            { player: 'Player2', net_gain: -500 }
+          ],
+          pre_hand_stacks: { Player1: 10000, Player2: 10000 }
+        }
+      ]
+    };
+    (getGame as any).mockResolvedValue(mockGame);
+
+    render(
+      <RunDashboard
+        summary={{
+          ...mockSummary,
+          leaderboard: [
+            { name: 'Player1', total_hands: 1, avg_profit: 500 },
+            { name: 'Player2', total_hands: 1, avg_profit: -500 },
+          ]
+        } as any}
+        gameIds={['1']}
+        runs={mockRuns}
+        runId="Run1"
+        totalGames={1}
+        totalHands={1}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Computing high-fidelity stats/i)).not.toBeInTheDocument();
+    });
+
+    const ranksData = JSON.parse(screen.getByTestId('ranks-data').textContent!);
+    // Player1 has more chips, so should be Rank 1
+    expect(ranksData['Player1'].avg).toBe(1);
+    // Player2 has fewer chips, so should be Rank 2
+    expect(ranksData['Player2'].avg).toBe(2);
   });
 });

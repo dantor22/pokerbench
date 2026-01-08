@@ -37,7 +37,7 @@ export default async function RunGamePage({ params }: PageProps) {
         </h1>
       </div>
 
-      <GameSimulator game={game} />
+      <GameSimulator game={game} runId={decodedRunId} />
     </div>
   );
 }

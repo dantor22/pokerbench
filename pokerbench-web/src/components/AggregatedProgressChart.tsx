@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ComposedChart,
   Line,
@@ -21,6 +21,9 @@ interface ProgressChartProps {
   enrichedData?: Record<string, { mean: number[], low: number[], high: number[], individual?: number[][] }>;
   showStats?: boolean;
   onToggleStats?: (show: boolean) => void;
+  showRank?: boolean;
+  onToggleRank?: (show: boolean) => void;
+  runId?: string;
 }
 
 const CustomActiveDot = (props: any) => {
@@ -33,8 +36,12 @@ export default function AggregatedProgressChart({
   data, 
   enrichedData, 
   showStats = false, 
-  onToggleStats
+  onToggleStats,
+  showRank = false,
+  onToggleRank,
+  runId
 }: ProgressChartProps) {
+
   if (!data || Object.keys(data).length === 0) return <div>No data available</div>;
 
   const players = Object.keys(data);
@@ -44,40 +51,115 @@ export default function AggregatedProgressChart({
   const canShowStats = !!enrichedData && Object.keys(enrichedData).length > 0;
   const actuallyShowStats = canShowStats && showStats;
 
-  const chartData = Array.from({ length: totalHands }, (_, i) => {
-    const entry: Record<string, any> = { hand: i };
-    players.forEach(player => {
-      if (enrichedData && enrichedData[player]) {
-        entry[`${player}_mean`] = enrichedData[player].mean[i];
-        
-        // Only add range if stats are being shown to avoid expanding Y-axis unnecessarily
-        if (actuallyShowStats) {
-          entry[`${player}_range`] = [enrichedData[player].low[i], enrichedData[player].high[i]];
+  const chartData = useMemo(() => {
+    if (showRank && canShowStats) {
+      // Calculate tournament rank per hand aggregated across games
+      const numGames = Math.max(...players.map(p => enrichedData![p].individual?.length || 0));
+
+      return Array.from({ length: totalHands }, (_, i) => {
+        const entry: Record<string, any> = { hand: i };
+
+        // For each game at this hand index, determine each player's rank
+        const playerRanksInGames: Record<string, number[]> = {};
+        players.forEach(p => playerRanksInGames[p] = []);
+
+        for (let g = 0; g < numGames; g++) {
+          const gameStacks = players.map(p => {
+            const history = enrichedData![p].individual?.[g];
+            if (!history) return { name: p, stack: -1 };
+            return { name: p, stack: history[i] ?? history[history.length - 1] };
+          }).filter(s => s.stack !== -1);
+
+          // Sort by stack size descending
+          gameStacks.sort((a, b) => b.stack - a.stack);
+
+          // Assign ranks (1-indexed, handling ties)
+          let currentRank = 1;
+          for (let j = 0; j < gameStacks.length; j++) {
+            if (j > 0 && gameStacks[j].stack < gameStacks[j - 1].stack) {
+              currentRank = j + 1;
+            }
+            playerRanksInGames[gameStacks[j].name].push(currentRank);
+          }
         }
-        
-        // Add individual trajectories if requested
-        if (actuallyShowStats && enrichedData[player].individual) {
-          enrichedData[player].individual!.forEach((traj, trajIdx) => {
-            entry[`${player}_traj_${trajIdx}`] = traj[i] ?? traj[traj.length - 1];
-          });
+
+        // Aggregate ranks for this hand
+        players.forEach(p => {
+          const ranks = playerRanksInGames[p];
+          if (ranks.length > 0) {
+            const meanRank = ranks.reduce((a, b) => a + b, 0) / ranks.length;
+            entry[`${p}_mean`] = meanRank;
+
+            if (actuallyShowStats) {
+              // Standard deviation and CI for rank
+              const n = ranks.length;
+              const variance = ranks.reduce((a, b) => a + Math.pow(b - meanRank, 2), 0) / n;
+              const stdDev = Math.sqrt(variance);
+              const stderr = stdDev / Math.sqrt(n);
+              const ci = 1.96 * stderr;
+              entry[`${p}_range`] = [meanRank - ci, meanRank + ci];
+
+              // Skip individual rank trajectories as they are too noisy
+            }
+          }
+        });
+
+        return entry;
+      });
+    }
+
+    // Default: show stack sizes
+    return Array.from({ length: totalHands }, (_, i) => {
+      const entry: Record<string, any> = { hand: i };
+      players.forEach(player => {
+        if (enrichedData && enrichedData[player]) {
+          entry[`${player}_mean`] = enrichedData[player].mean[i];
+
+          if (actuallyShowStats) {
+            entry[`${player}_range`] = [enrichedData[player].low[i], enrichedData[player].high[i]];
+
+            if (enrichedData[player].individual) {
+              enrichedData[player].individual!.forEach((traj, trajIdx) => {
+                entry[`${player}_traj_${trajIdx}`] = traj[i] ?? traj[traj.length - 1];
+              });
+            }
+          }
+        } else {
+          entry[player] = data[player][i];
         }
-      } else {
-        entry[player] = data[player][i];
-      }
+      });
+      return entry;
     });
-    return entry;
-  });
+  }, [showRank, players, totalHands, enrichedData, actuallyShowStats, data, canShowStats]);
+
+  const filteredChartData = showRank ? chartData.filter(d => d.hand !== 0) : chartData;
 
   return (
     <div className="card bg-slate-900 border-slate-800 pb-2 relative">
       <div className="flex-responsive">
         <div>
-          <h2 className="text-xl font-bold text-slate-100">Stack size over time</h2>
+          <h2 className="text-xl font-bold text-slate-100">
+            {showRank ? 'Tournament rank over time' : 'Stack size over time'}
+          </h2>
           <p className="text-slate-400 text-sm">
-            Average across aggregated runs 
+            {showRank ? 'Average rank across games (lower is better)' : 'Average across aggregated runs'}
           </p>
         </div>
         <div className="flex items-center gap-4 self-start md-self-auto">
+          {canShowStats && onToggleRank && (
+            <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50 hover:bg-slate-800 transition-colors">
+              <input
+                type="checkbox"
+                id="show-rank"
+                className="accent-blue-500 w-4 h-4 cursor-pointer"
+                checked={showRank}
+                onChange={(e) => onToggleRank(e.target.checked)}
+              />
+              <label htmlFor="show-rank" className="text-xs font-medium text-slate-300 cursor-pointer select-none">
+                Rank view
+              </label>
+            </div>
+          )}
           {canShowStats && onToggleStats && (
             <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50 hover:bg-slate-800 transition-colors">
               <input 
@@ -97,7 +179,7 @@ export default function AggregatedProgressChart({
       
       <div style={{ width: '100%', height: 400 }} className="select-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 45, left: 0, bottom: 30 }}>
+          <ComposedChart data={filteredChartData} margin={{ top: 20, right: 45, left: 0, bottom: 30 }}>
             <CartesianGrid vertical={false} stroke="#334155" strokeDasharray="3 3" opacity={0.2} />
             <XAxis
               dataKey="hand"
@@ -113,12 +195,18 @@ export default function AggregatedProgressChart({
               tick={{ fill: '#64748b', fontSize: 12 }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              tickFormatter={(value) => showRank
+                ? `Rank ${Number(value).toFixed(1)}`
+                : value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+              }
               padding={{ top: 10, bottom: 10 }}
               domain={['dataMin', 'dataMax']}
-              width={55}
+              reversed={showRank}
+              width={65}
             />
-            <ReferenceLine y={10000} stroke="#475569" strokeDasharray="3 3" label={{ value: '$10k', position: 'right', fill: '#64748b', fontSize: 10 }} />
+            {!showRank && (
+              <ReferenceLine y={10000} stroke="#475569" strokeDasharray="3 3" label={{ value: '$10k', position: 'right', fill: '#64748b', fontSize: 10 }} />
+            )}
             <Tooltip
               contentStyle={{
                 backgroundColor: '#1e293b',
@@ -129,7 +217,10 @@ export default function AggregatedProgressChart({
               }}
               formatter={(value: any, name: any) => {
                 if (typeof name === 'string' && (name.endsWith('_range') || name.includes('_traj_'))) return null;
-                return [`$${Math.round(Number(value || 0)).toLocaleString()}`, name];
+                const formattedValue = showRank
+                  ? `Rank ${Number(value).toFixed(2)}`
+                  : `$${Math.round(Number(value || 0)).toLocaleString()}`;
+                return [formattedValue, name];
               }}
               labelFormatter={(label) => `Hand: ${label}`}
               itemStyle={{ paddingBottom: 4 }}
@@ -165,7 +256,7 @@ export default function AggregatedProgressChart({
                       activeDot={false}
                     />
                   )}
-                  {actuallyShowStats && enrichedData?.[player]?.individual?.map((_, idx) => (
+                  {!showRank && actuallyShowStats && enrichedData?.[player]?.individual?.map((_, idx) => (
                     <Line
                       key={`${player}_traj_${idx}`}
                       name={`${player}_traj_${idx}`}
@@ -181,14 +272,14 @@ export default function AggregatedProgressChart({
                     />
                   ))}
                   <Line
-                    name={actuallyShowStats ? `${formatModelName(player)}${getEffortSuffix(player)}` : formatModelName(player)}
+                    name={actuallyShowStats ? `${formatModelName(player, runId)}${getEffortSuffix(player, runId)}` : formatModelName(player, runId)}
                     type="monotone"
                     dataKey={dataKey}
                     stroke={color}
                     strokeWidth={3}
                     style={{ filter: `drop-shadow(0 0 3px ${color}44)` }}
-                    dot={<ChartCustomDot lastPointIndex={totalHands - 1} modelName={player} />}
-                    activeDot={(props) => <CustomActiveDot {...props} dataLength={totalHands} fill={color} />}
+                    dot={<ChartCustomDot lastPointIndex={filteredChartData.length - 1} modelName={player} />}
+                    activeDot={(props) => <CustomActiveDot {...props} dataLength={filteredChartData.length} fill={color} />}
                     isAnimationActive={false}
                   />
                 </g>

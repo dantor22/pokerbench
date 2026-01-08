@@ -9,14 +9,16 @@ export const MODEL_NAME_MAPPING: Record<string, string> = {
   "Flash": "Gemini 3 Flash",
   // Fallbacks for lowercase just in case
   "pro": "Gemini 3 Pro",
-  "minni": "GPT-5 Mini", 
+  "minni": "GPT-5 Mini",
   "claude": "Opus 4.5",
   "fivetwo": "GPT-5.2",
   "elon": "Grok 4.1 Fast Reasoning",
 
 
 
-  "flash": "Gemini 3 Flash"
+  "flash": "Gemini 3 Flash",
+  "Haiku": "Haiku 4.5",
+  "haiku": "Haiku 4.5"
 };
 
 export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInvert?: boolean; logoScale?: number }> = {
@@ -33,9 +35,14 @@ export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInv
   "fivetwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },
   "elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3 },
   "flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0 },
+  "Haiku": { color: '#fb923c', logo: '/logos/anthropic.svg' },
+  "haiku": { color: '#fb923c', logo: '/logos/anthropic.svg' },
 };
 
-export function formatModelName(name: string): string {
+export function formatModelName(name: string, runId?: string): string {
+  if (runId === 'Small_Models' && name === 'Claude') {
+    return 'Haiku 4.5';
+  }
   return MODEL_NAME_MAPPING[name] || name;
 }
 
@@ -44,9 +51,12 @@ export function getModelColor(name: string): string {
 }
 
 // Bit of a hack as we're not currently encoding the reasoning effort config into the JSON.
-export function getEffortSuffix(modelKey: string): string {
+export function getEffortSuffix(modelKey: string, runId?: string): string {
   const key = modelKey.toLowerCase();
-  if (key === 'claude') return ' (medium)';
+  if (key === 'claude') {
+    if (runId === 'Small_Models') return '';
+    return ' (medium)';
+  }
   if (key === 'elon') return '';
   return ' (high)';
 }

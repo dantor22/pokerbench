@@ -22,6 +22,8 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
   const [enrichedStacks, setEnrichedStacks] = useState<Record<string, { mean: number[], low: number[], high: number[], individual?: number[][] }>>({});
   const [isEnriching, setIsEnriching] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showRank, setShowRank] = useState(false);
+  const [playerRanks, setPlayerRanks] = useState<Record<string, { avg: number, stdDev: number, ci: number }>>({});
 
   useEffect(() => {
     if (!gameIds.length || !runId) return;
@@ -31,11 +33,13 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
       try {
         const profitsMap: Record<string, number[]> = {};
         const stacksMap: Record<string, number[][]> = {};
+        const finalRanksMap: Record<string, number[]> = {};
         
         // Initialize
         summary.leaderboard.forEach(p => {
           profitsMap[p.name] = [];
           stacksMap[p.name] = [];
+          finalRanksMap[p.name] = [];
         });
 
         // Fetch all games
@@ -76,6 +80,37 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
               profitsMap[p].push(finalShift);
             }
           });
+
+          // Compute final ranks for this game
+          const finalGameStacks = playersInGame.map(p => ({
+            name: p,
+            stack: gameStacks[p][gameStacks[p].length - 1]
+          }));
+          finalGameStacks.sort((a, b) => b.stack - a.stack);
+
+          let currentRank = 1;
+          for (let j = 0; j < finalGameStacks.length; j++) {
+            if (j > 0 && finalGameStacks[j].stack < finalGameStacks[j - 1].stack) {
+              currentRank = j + 1;
+            }
+            if (finalRanksMap[finalGameStacks[j].name]) {
+              finalRanksMap[finalGameStacks[j].name].push(currentRank);
+            }
+          }
+        });
+
+        // Compute stats for chart
+
+        const newPlayerRanks: Record<string, { avg: number, stdDev: number, ci: number }> = {};
+        Object.keys(finalRanksMap).forEach(p => {
+          const ranks = finalRanksMap[p];
+          if (ranks.length === 0) return;
+          const n = ranks.length;
+          const mean = ranks.reduce((a, b) => a + b, 0) / n;
+          const variance = ranks.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+          const stdDev = Math.sqrt(variance);
+          const stderr = stdDev / Math.sqrt(n);
+          newPlayerRanks[p] = { avg: mean, stdDev, ci: 1.96 * stderr };
         });
 
         // Compute stats for leaderboard
@@ -83,6 +118,8 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
           ...p,
           profits: profitsMap[p.name] || []
         }));
+
+        setPlayerRanks(newPlayerRanks);
 
         // Compute stats for chart
         const newEnrichedStacks: Record<string, { mean: number[], low: number[], high: number[], individual?: number[][] }> = {};
@@ -161,11 +198,20 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
           enrichedData={Object.keys(enrichedStacks).length > 0 ? enrichedStacks : undefined} 
           showStats={showStats}
           onToggleStats={setShowStats}
+          showRank={showRank}
+          onToggleRank={setShowRank}
+          runId={runId}
         />
       </div>
 
       <div className="dashboard-lower-grid mb-4">
-        <Leaderboard data={enrichedLeaderboard} showStats={showStats} />
+        <Leaderboard
+          data={enrichedLeaderboard}
+          showStats={showStats}
+          runId={runId}
+          showRank={showRank}
+          ranks={playerRanks}
+        />
         
         <div className="card games-panel mb-1">
           <div className="flex justify-between items-baseline mb-4 flex-no-shrink">

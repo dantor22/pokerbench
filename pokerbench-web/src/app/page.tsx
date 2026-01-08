@@ -19,7 +19,8 @@ export default async function Home() {
   const totalHands = await getTotalHandsAcrossRuns();
 
   if (!summary && runs.length > 0) {
-    redirect(`/run/${runs[0]}`);
+    const defaultRun = runs.includes('Large_Models') ? 'Large_Models' : runs[0];
+    redirect(`/run/${defaultRun}`);
   }
 
   if (!summary) {

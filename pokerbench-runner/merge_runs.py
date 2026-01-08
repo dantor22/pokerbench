@@ -14,6 +14,21 @@ def load_game_data(file_path):
         print(f"Error loading {file_path}: {e}")
         return None
 
+def is_single_winner(game):
+    if not game.get("hands"):
+        return False
+    players = game["players"]
+    last_hand = game["hands"][-1]
+    pre_stacks = last_hand["pre_hand_stacks"]
+    results = {r["player"]: r["net_gain"] for r in last_hand["results"]}
+    
+    survivors = 0
+    for p in players:
+        final_stack = pre_stacks.get(p, 0) + results.get(p, 0)
+        if final_stack > 0:
+            survivors += 1
+    return survivors == 1
+
 def generate_results_graph(all_histories, output_dir, filename="stack_history.png"):
     if not all_histories:
         return
@@ -132,6 +147,7 @@ def main():
     parser = argparse.ArgumentParser(description="Merge poker runs")
     parser.add_argument("--sources", nargs="+", required=True, help="Source directories")
     parser.add_argument("--target", required=True, help="Target directory")
+    parser.add_argument("--min-hands", type=int, default=0, help="Minimum number of hands required to include a run")
     args = parser.parse_args()
 
     target_dir = args.target
@@ -156,8 +172,18 @@ def main():
                 # If content is same, it's fine. If different content but same ID, we might have collision.
                 # Usually IDs are random UUIDs so collision unlikely unless it's literally the same file.
                 if not os.path.exists(dst_path):
-                    shutil.copy2(src_path, dst_path)
-                    print(f"Copied {filename} from {source}")
+                    data = load_game_data(src_path)
+                    if not data:
+                        print(f"Skipping {filename} from {source}: could not load data")
+                        continue
+                        
+                    num_hands = len(data.get("hands", []))
+                    if num_hands >= args.min_hands or is_single_winner(data):
+                        shutil.copy2(src_path, dst_path)
+                        reason = "single winner" if num_hands < args.min_hands else f"{num_hands} hands"
+                        print(f"Copied {filename} from {source} ({reason})")
+                    else:
+                        print(f"Skipping {filename} from {source}: only {num_hands} hands (min {args.min_hands})")
                 else:
                     print(f"Skipping {filename} (already exists in target)")
     
@@ -168,7 +194,11 @@ def main():
             path = os.path.join(target_dir, filename)
             data = load_game_data(path)
             if data:
-                games.append(data)
+                num_hands = len(data.get("hands", []))
+                if num_hands >= args.min_hands or is_single_winner(data):
+                    games.append(data)
+                else:
+                    print(f"Filtering out {filename}: only {num_hands} hands (min {args.min_hands})")
     
     if not games:
         print("No games found in validation step.")

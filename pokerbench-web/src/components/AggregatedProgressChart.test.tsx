@@ -51,4 +51,30 @@ describe('AggregatedProgressChart', () => {
     fireEvent.click(checkbox);
     expect(onToggleStats).toHaveBeenCalledWith(true);
   });
+
+  it('renders "Rank view" checkbox when onToggleRank is provided', () => {
+    const enrichedData = {
+      'Pro': { mean: [10000, 10100], low: [9000, 9100], high: [11000, 11100] }
+    };
+    const onToggleRank = vi.fn();
+    render(
+      <AggregatedProgressChart
+        data={mockData}
+        enrichedData={enrichedData as any}
+        onToggleRank={onToggleRank}
+      />
+    );
+
+    const checkbox = screen.getByLabelText(/Rank view/i);
+    expect(checkbox).toBeInTheDocument();
+
+    fireEvent.click(checkbox);
+    expect(onToggleRank).toHaveBeenCalledWith(true);
+  });
+
+  it('updates title and description when showRank is true', () => {
+    render(<AggregatedProgressChart data={mockData} showRank={true} />);
+    expect(screen.getByText('Tournament rank over time')).toBeInTheDocument();
+    expect(screen.getByText(/Average rank across games/i)).toBeInTheDocument();
+  });
 });

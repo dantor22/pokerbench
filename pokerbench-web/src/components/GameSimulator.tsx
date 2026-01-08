@@ -26,9 +26,10 @@ function CameraUpdater({ fov }: { fov: number }) {
 
 interface GameSimulatorProps {
   game: Game;
+  runId?: string;
 }
 
-export default function GameSimulator({ game }: GameSimulatorProps) {
+export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [currentHandIndex, setCurrentHandIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -49,7 +50,7 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
 
     const players = game.players.map(name => ({
       name,
-      displayName: formatModelName(name),
+      displayName: formatModelName(name, runId),
       stack: currentHand.pre_hand_stacks[name] || 0,
       bet: 0,
       cards: currentHand.hole_cards[name] || [],
@@ -214,11 +215,10 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
       <div className="card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container">
         <div className="absolute top-4 left-4 z-10 select-none">
           <h2 className="text-2xl font-bold bg-black-50 px-2 rounded">Hand #{currentHand.hand_number}</h2>
-          <div className="text-sm text-gray-300 bg-black-50 px-2 rounded mt-1">{formatModelName(currentHand.dealer)} Button</div>
           <div className="mt-2 space-y-1">
             {currentHand.results.length > 0 && currentStepIndex >= steps.length - 1 && (
               <div className="bg-green-900-80 p-2 rounded max-w-xs">
-                <span className="font-bold text-green-300">Winner:</span> {formatModelName(currentHand.results.find(r => r.winner)?.player || '')}
+                <span className="font-bold text-green-300">Winner:</span> {formatModelName(currentHand.results.find(r => r.winner)?.player || '', runId)}
               </div>
             )}
           </div>
@@ -376,7 +376,7 @@ export default function GameSimulator({ game }: GameSimulatorProps) {
           setIsPlaying(false);
         }}
       />
-      <StackSizeChart game={game} currentHandIndex={currentHandIndex} />
+      <StackSizeChart game={game} currentHandIndex={currentHandIndex} runId={runId} />
     </div>
   );
 }

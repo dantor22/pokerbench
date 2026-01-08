@@ -114,5 +114,88 @@ class TestMergeRuns(unittest.TestCase):
         self.assertEqual(p2["avg_profit"], 250.0)
         self.assertEqual(p2["win_rate"], 50.0)
 
+    def test_min_hands_filtering(self):
+        # Game 1 has 1 hand (updated in setUp)
+        # Add Game 2 with 2 hands
+        game2_data = {
+            "game_id": "test_uuid_2",
+            "players": ["P1", "P2"],
+            "config": {"hands": 2, "start_stack": 10000},
+            "hands": [
+                {
+                    "hand_number": 1,
+                    "pre_hand_stacks": {"P1": 10000, "P2": 10000},
+                    "results": [
+                        {"player": "P1", "net_gain": -1000, "winner": False},
+                        {"player": "P2", "net_gain": 1000, "winner": True}
+                    ],
+                    "actions": []
+                },
+                {
+                    "hand_number": 2,
+                    "pre_hand_stacks": {"P1": 9000, "P2": 11000},
+                    "results": [
+                        {"player": "P1", "net_gain": 200, "winner": True},
+                        {"player": "P2", "net_gain": -200, "winner": False}
+                    ],
+                    "actions": []
+                }
+            ]
+        }
+        with open(os.path.join(self.source_dir, "game_test_2.json"), 'w') as f:
+            json.dump(game2_data, f)
+
+        # Run with --min-hands 2
+        with patch('sys.argv', ['merge_runs.py', '--sources', self.source_dir, '--target', self.target_dir, '--min-hands', '2']):
+            merge_runs.main()
+
+        # Should only have game_test_2.json in target
+        self.assertFalse(os.path.exists(os.path.join(self.target_dir, "game_test.json")))
+        self.assertTrue(os.path.exists(os.path.join(self.target_dir, "game_test_2.json")))
+
+        with open(os.path.join(self.target_dir, "summary.json"), 'r') as f:
+            summary = json.load(f)
+        
+        # Only 1 game should be in summary
+        self.assertEqual(summary["total_games"], 1)
+        self.assertEqual(summary["raw_game_ids"], ["test_uuid_2"])
+
+    def test_min_hands_with_early_winner(self):
+        # Game 1 has 1 hand and NO WINNER (P1: 10500, P2: 9500)
+        # Add Game 2 with 1 hand and A WINNER (P2 eliminated)
+        game2_data = {
+            "game_id": "early_winner",
+            "players": ["P1", "P2"],
+            "config": {"hands": 100, "start_stack": 10000},
+            "hands": [
+                {
+                    "hand_number": 1,
+                    "pre_hand_stacks": {"P1": 10000, "P2": 10000},
+                    "results": [
+                        {"player": "P1", "net_gain": 10000, "winner": True},
+                        {"player": "P2", "net_gain": -10000, "winner": False}
+                    ],
+                    "actions": []
+                }
+            ]
+        }
+        with open(os.path.join(self.source_dir, "game_early.json"), 'w') as f:
+            json.dump(game2_data, f)
+
+        # Run with --min-hands 10
+        with patch('sys.argv', ['merge_runs.py', '--sources', self.source_dir, '--target', self.target_dir, '--min-hands', '10']):
+            merge_runs.main()
+
+        # Should filtering out game_test.json (1 hand, no winner)
+        # BUT KEEPING game_early.json (1 hand, single winner)
+        self.assertFalse(os.path.exists(os.path.join(self.target_dir, "game_test.json")))
+        self.assertTrue(os.path.exists(os.path.join(self.target_dir, "game_early.json")))
+
+        with open(os.path.join(self.target_dir, "summary.json"), 'r') as f:
+            summary = json.load(f)
+        
+        self.assertEqual(summary["total_games"], 1)
+        self.assertEqual(summary["raw_game_ids"], ["early_winner"])
+
 if __name__ == '__main__':
     unittest.main()

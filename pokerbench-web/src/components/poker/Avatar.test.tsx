@@ -25,6 +25,11 @@ describe('Avatar', () => {
     expect(getAllByTestId('decal')).toHaveLength(3);
   });
 
+  it('renders a decal for Haiku', () => {
+    const { getAllByTestId } = render(<Avatar name="Haiku 4.5" isActive={true} isAction={false} isDealer={false} />);
+    expect(getAllByTestId('decal')).toHaveLength(3);
+  });
+
   it('renders a torus for the action indicator when isAction is true', () => {
     const { getByTestId } = render(<Avatar name="Pro" isActive={true} isAction={true} isDealer={false} />);
     expect(getByTestId('action-halo')).toBeInTheDocument();

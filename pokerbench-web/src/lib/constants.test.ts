@@ -6,6 +6,7 @@ describe('constants', () => {
     it('should format known model names correctly', () => {
       expect(formatModelName('Pro')).toBe('Gemini 3 Pro');
       expect(formatModelName('Claude')).toBe('Opus 4.5');
+      expect(formatModelName('Claude', 'Small_Models')).toBe('');
     });
 
     it('should return the original name if not in mapping', () => {
@@ -29,9 +30,14 @@ describe('constants', () => {
   });
 
   describe('getEffortSuffix', () => {
-    it('should return (medium) for Claude', () => {
+    it('should return (medium) for Claude normally', () => {
       expect(getEffortSuffix('Claude')).toBe(' (medium)');
       expect(getEffortSuffix('claude')).toBe(' (medium)');
+    });
+
+    it('should return (high) for Claude in Small_Models run', () => {
+      expect(getEffortSuffix('Claude', 'Small_Models')).toBe(' (high)');
+      expect(getEffortSuffix('claude', 'Small_Models')).toBe(' (high)');
     });
 
     it('should return empty string for Elon', () => {

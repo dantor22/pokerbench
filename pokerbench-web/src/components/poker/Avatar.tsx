@@ -15,7 +15,7 @@ const getLogo = (name: string) => {
   if (n.includes('gpt') || n.includes('oai')) return '/logos/openai.svg';
   if (n.includes('grok')) return '/logos/grok.svg';
   if (n.includes('gemini')) return '/logos/gemini_2025.svg';
-  if (n.includes('opus') || n.includes('claude')) return '/logos/anthropic.svg';
+  if (n.includes('opus') || n.includes('claude') || n.includes('haiku')) return '/logos/anthropic.svg';
   return null;
 };
 
