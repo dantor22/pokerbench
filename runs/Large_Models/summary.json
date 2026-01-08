@@ -7,54 +7,54 @@
       "avg_profit": 5753.5,
       "win_rate": 17.01,
       "total_hands": 1993,
-      "total_cost": 2.149735599999999,
-      "avg_cost_per_decision": 0.0006568089214787654,
-      "avg_reasoning_tokens": 45.979835013748854
+      "total_cost": -1,
+      "avg_cost_per_decision": 0.0072113669629629605,
+      "avg_reasoning_tokens": 647.7614814814815
     },
     {
       "name": "Claude",
       "avg_profit": 2264.43,
       "win_rate": 22.97,
       "total_hands": 1794,
-      "total_cost": 27.18032000000001,
-      "avg_cost_per_decision": 0.00828163315051798,
-      "avg_reasoning_tokens": 11.780926264472882
+      "total_cost": -1,
+      "avg_cost_per_decision": 0.07495347457627119,
+      "avg_reasoning_tokens": 189.91833590138674
     },
     {
       "name": "Minni",
       "avg_profit": 1924.93,
       "win_rate": 31.41,
       "total_hands": 1563,
-      "total_cost": 3.2685671999999997,
-      "avg_cost_per_decision": 0.000990775143983025,
-      "avg_reasoning_tokens": 349.41012428008486
+      "total_cost": -1,
+      "avg_cost_per_decision": 0.00944365619834711,
+      "avg_reasoning_tokens": 3850.754820936639
     },
     {
       "name": "Pro",
       "avg_profit": -2617.86,
       "win_rate": 9.93,
       "total_hands": 1984,
-      "total_cost": 8.2221974,
-      "avg_cost_per_decision": 0.0027976173528411028,
-      "avg_reasoning_tokens": 63.528411024157876
+      "total_cost": -1,
+      "avg_cost_per_decision": 0.03256774132581101,
+      "avg_reasoning_tokens": 1009.7023977433004
     },
     {
       "name": "Elon",
       "avg_profit": -3435.71,
       "win_rate": 20.44,
       "total_hands": 1502,
-      "total_cost": 0.6050989999999998,
-      "avg_cost_per_decision": 0.0002584788551900896,
-      "avg_reasoning_tokens": 50.710807347287485
+      "total_cost": -1,
+      "avg_cost_per_decision": 0.0015516559585492227,
+      "avg_reasoning_tokens": 938.8031088082902
     },
     {
       "name": "FiveTwo",
       "avg_profit": -3889.29,
       "win_rate": 28.06,
       "total_hands": 1297,
-      "total_cost": 1.54068425,
-      "avg_cost_per_decision": 0.0006432919624217119,
-      "avg_reasoning_tokens": 21.350313152400837
+      "total_cost": -1,
+      "avg_cost_per_decision": 0.022645298064516133,
+      "avg_reasoning_tokens": 919.1763440860215
     }
   ],
   "aggregated_stacks": {
