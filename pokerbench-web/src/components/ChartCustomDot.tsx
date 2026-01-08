@@ -17,35 +17,25 @@ export const ChartCustomDot = (props: any) => {
     
     return (
       <g style={{ pointerEvents: 'none' }}>
+        <defs>
+          <filter id="pb-logo-blacken">
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0"
+            />
+          </filter>
+        </defs>
         {/* White background circle to make logo pop */}
         <circle cx={shiftedCx} cy={cy} r={r} fill="white" stroke={stroke} strokeWidth={2} />
-        {/* Use foreignObject and img for better filter support on mobile Safari */}
-        <foreignObject 
+        {/* The SVG Logo - using native SVG filter for best z-index support */}
+        <image 
           x={shiftedCx - offset} 
           y={cy - offset} 
           width={size} 
-          height={size}
-        >
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <img
-              src={config.logo}
-              alt=""
-              style={{ 
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                filter: config.logoInvert ? 'brightness(0)' : 'none',
-                WebkitFilter: config.logoInvert ? 'brightness(0)' : 'none'
-              }}
-            />
-          </div>
-        </foreignObject>
+          height={size} 
+          href={config.logo}
+          filter={config.logoInvert ? 'url(#pb-logo-blacken)' : 'none'}
+        />
       </g>
     );
   }
