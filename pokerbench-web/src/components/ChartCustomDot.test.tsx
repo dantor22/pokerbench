@@ -14,10 +14,10 @@ describe('ChartCustomDot', () => {
 
   it('renders a logo for a known model at the last point', () => {
     const { container } = render(<svg><ChartCustomDot {...defaultProps} /></svg>);
-    // Should render an <image> tag for 'Pro' (Gemini)
-    const image = container.querySelector('image');
+    // Should render an <img> tag for 'Pro' (Gemini) inside foreignObject
+    const image = container.querySelector('img');
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('href', '/logos/gemini_2025.svg');
+    expect(image).toHaveAttribute('src', '/logos/gemini_2025.svg');
     
     // Should have white circle background
     const circle = container.querySelector('circle');
@@ -38,6 +38,6 @@ describe('ChartCustomDot', () => {
     const circle = container.querySelector('circle');
     expect(circle).toBeInTheDocument();
     expect(circle).toHaveAttribute('fill', 'white');
-    expect(container.querySelector('image')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
   });
 });
