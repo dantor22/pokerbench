@@ -1065,7 +1065,8 @@ button:hover {
 
   .player-name-badge,
   .player-stack-badge,
-  .player-profit-badge {
+  .player-profit-badge,
+    .action-intent-badge {
     border: none !important;
     box-shadow: none !important;
     /* Often helpful to kill shadow-border interaction too */
