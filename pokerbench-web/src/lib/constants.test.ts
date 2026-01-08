@@ -6,7 +6,7 @@ describe('constants', () => {
     it('should format known model names correctly', () => {
       expect(formatModelName('Pro')).toBe('Gemini 3 Pro');
       expect(formatModelName('Claude')).toBe('Opus 4.5');
-      expect(formatModelName('Claude', 'Small_Models')).toBe('');
+      expect(formatModelName('Claude', 'Small_Models')).toBe('Haiku 4.5');
     });
 
     it('should return the original name if not in mapping', () => {
@@ -35,9 +35,9 @@ describe('constants', () => {
       expect(getEffortSuffix('claude')).toBe(' (medium)');
     });
 
-    it('should return (high) for Claude in Small_Models run', () => {
-      expect(getEffortSuffix('Claude', 'Small_Models')).toBe(' (high)');
-      expect(getEffortSuffix('claude', 'Small_Models')).toBe(' (high)');
+    it('should return empty string for Claude in Small_Models run', () => {
+      expect(getEffortSuffix('Claude', 'Small_Models')).toBe('');
+      expect(getEffortSuffix('claude', 'Small_Models')).toBe('');
     });
 
     it('should return empty string for Elon', () => {

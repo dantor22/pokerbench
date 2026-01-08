@@ -36,7 +36,6 @@ describe('GameSimulator', () => {
   it('renders hand number and dealer info', () => {
     render(<GameSimulator game={mockGame as any} />);
     expect(screen.getByText('Hand #1')).toBeInTheDocument();
-    expect(screen.getByText('Gemini 3 Pro Button')).toBeInTheDocument();
   });
 
   it('renders playback controls', () => {

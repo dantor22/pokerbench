@@ -7,17 +7,14 @@ export const MODEL_NAME_MAPPING: Record<string, string> = {
   "FiveTwo": "GPT-5.2",
   "Elon": "Grok 4.1 Fast Reasoning",
   "Flash": "Gemini 3 Flash",
+  "Haiku": "Haiku 4.5",
   // Fallbacks for lowercase just in case
   "pro": "Gemini 3 Pro",
   "minni": "GPT-5 Mini",
   "claude": "Opus 4.5",
   "fivetwo": "GPT-5.2",
   "elon": "Grok 4.1 Fast Reasoning",
-
-
-
   "flash": "Gemini 3 Flash",
-  "Haiku": "Haiku 4.5",
   "haiku": "Haiku 4.5"
 };
 
@@ -28,6 +25,7 @@ export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInv
   "FiveTwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 }, // Red
   "Elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3 },   // Cyan
   "Flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0 },     // Purple
+  "Haiku": { color: '#fb923c', logo: '/logos/anthropic.svg' },
   // Fallbacks
   "pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0 },
   "minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },
@@ -35,7 +33,6 @@ export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInv
   "fivetwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },
   "elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3 },
   "flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0 },
-  "Haiku": { color: '#fb923c', logo: '/logos/anthropic.svg' },
   "haiku": { color: '#fb923c', logo: '/logos/anthropic.svg' },
 };
 
