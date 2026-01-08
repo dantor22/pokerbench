@@ -1,4 +1,4 @@
-import { Summary, Game } from './types';
+import { Summary, Game, RunStats } from './types';
 import manifest from '../data/manifest.json';
 
 // Define the type for our manifest to help TS
@@ -140,4 +140,18 @@ export async function getTotalHandsAcrossRuns(): Promise<number> {
     }
   }
   return total;
+}
+
+export async function getStats(runId?: string): Promise<RunStats | null> {
+  if (!runId) return null;
+  const baseUrl = getBaseUrl();
+  const url = `${baseUrl}/data/runs/${encodeURIComponent(runId)}/stats.json`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error(`Error loading stats for ${runId}:`, error);
+    return null;
+  }
 }

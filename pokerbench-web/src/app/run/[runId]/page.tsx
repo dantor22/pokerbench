@@ -1,4 +1,4 @@
-import { getSummary, getGameIds, getRuns, getTotalGamesAcrossRuns, getTotalHandsAcrossRuns } from '../../../lib/data';
+import { getSummary, getGameIds, getRuns, getTotalGamesAcrossRuns, getTotalHandsAcrossRuns, getStats } from '../../../lib/data';
 import RunDashboard from '../../../components/RunDashboard';
 import RunSelector from '../../../components/RunSelector';
 import Link from 'next/link';
@@ -19,6 +19,9 @@ export default async function RunPage({ params }: PageProps) {
   const totalGames = await getTotalGamesAcrossRuns();
   const totalHands = await getTotalHandsAcrossRuns();
 
+  // Try to fetch pre-computed stats
+  const stats = await getStats(decodedRunId);
+
   if (!summary) {
     return (
       <div className="container">
@@ -38,7 +41,16 @@ export default async function RunPage({ params }: PageProps) {
 
   return (
     <div className="container">
-      <RunDashboard summary={summary} gameIds={gameIds} runs={runs} runId={decodedRunId} totalGames={totalGames} totalHands={totalHands} />
+      <RunDashboard
+        key={decodedRunId}
+        summary={summary}
+        gameIds={gameIds}
+        runs={runs}
+        runId={decodedRunId}
+        totalGames={totalGames}
+        totalHands={totalHands}
+        initialStats={stats}
+      />
     </div>
   );
 }

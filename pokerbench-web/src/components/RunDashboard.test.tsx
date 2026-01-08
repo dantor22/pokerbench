@@ -6,6 +6,7 @@ import { getGame } from '../lib/data';
 // Mock dependencies
 vi.mock('../lib/data', () => ({
   getGame: vi.fn(),
+  getStats: vi.fn(),
 }));
 
 vi.mock('./AggregatedProgressChart', () => ({
@@ -180,5 +181,45 @@ describe('RunDashboard', () => {
     expect(ranksData['Player1'].avg).toBe(1);
     // Player2 has fewer chips, so should be Rank 2
     expect(ranksData['Player2'].avg).toBe(2);
+  });
+
+  it('uses initialStats if provided and skips enrichment', async () => {
+    const mockInitialStats = {
+      profits: { Player1: [100] },
+      stacks: {
+        Player1: {
+          mean: [100],
+          low: [90],
+          high: [110],
+          individual: [[100]]
+        }
+      },
+      ranks: {
+        Player1: { avg: 1.5, stdDev: 0.5, ci: 0.1 }
+      }
+    };
+
+    render(
+      <RunDashboard
+        summary={mockSummary as any}
+        gameIds={['1']}
+        runs={mockRuns}
+        runId="Run1"
+        totalGames={1}
+        totalHands={1}
+        initialStats={mockInitialStats as any}
+      />
+    );
+
+    // Should NOT show loader
+    expect(screen.queryByText(/Computing high-fidelity stats/i)).not.toBeInTheDocument();
+
+    // Verify ranks data is present immediately (proving initialStats was used)
+    const ranksDataElement = screen.getByTestId('ranks-data');
+    const ranksData = JSON.parse(ranksDataElement.textContent!);
+    expect(ranksData['Player1'].avg).toBe(1.5);
+
+    // getGame should NOT be called
+    expect(getGame).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const { computeStats } = require('./compute-stats');
+
 
 const SOURCE_DIR = path.resolve(__dirname, '../../runs');
 const DEST_DIR = path.resolve(__dirname, '../public/data/runs');
@@ -56,9 +58,22 @@ try {
     games: {}
   };
 
+
   // Populate game IDs for each run
   for (const runId of runDirs) {
     const runPath = path.join(DEST_DIR, runId);
+
+    // Compute stats
+    try {
+      console.log(`Computing stats for ${runId}...`);
+      const stats = computeStats(runPath);
+      if (stats) {
+        fs.writeFileSync(path.join(runPath, 'stats.json'), JSON.stringify(stats));
+      }
+    } catch (e) {
+      console.error(`Failed to compute stats for ${runId}:`, e);
+    }
+
     const files = fs.readdirSync(runPath);
     const gameIds = files
       .filter(f => f.startsWith('game_') && f.endsWith('.json'))

@@ -3,10 +3,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import RunSelector from './RunSelector';
-import { Summary, Game, PlayerStats } from '../lib/types';
+import { Summary, Game, PlayerStats, RunStats } from '../lib/types';
 import AggregatedProgressChart from './AggregatedProgressChart';
 import Leaderboard from './Leaderboard';
-import { getGame } from '../lib/data';
+import { getGame, getStats } from '../lib/data';
 
 interface RunDashboardProps {
   summary: Summary;
@@ -15,22 +15,89 @@ interface RunDashboardProps {
   runId?: string;
   totalGames: number;
   totalHands: number;
+  initialStats?: RunStats | null;
 }
 
-export default function RunDashboard({ summary, gameIds, runs, runId, totalGames, totalHands }: RunDashboardProps) {
-  const [enrichedLeaderboard, setEnrichedLeaderboard] = useState<PlayerStats[]>(summary.leaderboard);
-  const [enrichedStacks, setEnrichedStacks] = useState<Record<string, { mean: number[], low: number[], high: number[], individual?: number[][] }>>({});
+export default function RunDashboard({ summary, gameIds, runs, runId, totalGames, totalHands, initialStats }: RunDashboardProps) {
+  // Initialize with initialStats if available
+  const [enrichedLeaderboard, setEnrichedLeaderboard] = useState<PlayerStats[]>(() => {
+    if (initialStats) {
+      return summary.leaderboard.map(p => ({
+        ...p,
+        profits: initialStats.profits[p.name] || []
+      }));
+    }
+    return summary.leaderboard;
+  });
+
+  const [enrichedStacks, setEnrichedStacks] = useState<Record<string, { mean: number[], low: number[], high: number[], individual?: number[][] }>>(() => {
+    return initialStats?.stacks || {};
+  });
+
+  const [playerRanks, setPlayerRanks] = useState<Record<string, { avg: number, stdDev: number, ci: number }>>(() => {
+    return initialStats?.ranks || {};
+  });
+
+  // Only start enriching if we don't have initialStats
   const [isEnriching, setIsEnriching] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showRank, setShowRank] = useState(false);
-  const [playerRanks, setPlayerRanks] = useState<Record<string, { avg: number, stdDev: number, ci: number }>>({});
 
   useEffect(() => {
     if (!gameIds.length || !runId) return;
 
+    // If we have data already (initialStats or from previous run), check if we need to fetch
+    // Actually, if runId changes, initialStats might be stale if the parent didn't update it?
+    // But this component key should normally change if runId changes in a way that remounts it?
+    // No, Next.js might keep it mounted.
+    // If initialStats is provided, we assume it matches runId.
+    // BUT checking Object.keys(enrichedStacks).length might be true from initialStats.
+    // We strictly want to avoid fetching if we already have data FOR THIS RUN.
+
+    // Simplification: If enrichedStacks is not empty, we assume we are good?
+    // What if the user switches runs? enrichedStacks needs to be reset.
+    // The useState initializers only run on mount.
+    // So if runId changes, we DO need to fetch, unless we are remounted.
+    // Next.js page transitions typically remount components in page.tsx.
+
+    // Let's modify the useEffect to reset if runId changes and we don't have data.
+    // But wait, if runId changes, we might want to fetch.
+
+    // If we have initialStats passed in, effectively we are "done" for that render.
+    // BUT if we navigate client-side, initialStats might NOT update if it's passed from server component and we use Link?
+    // Actually Link navigation fetching server component payload DOES update props.
+
+    // So if initialStats matches the current run, we are good.
+    // But we don't know if initialStats matches runId inside this useEffect easily unless we compare.
+    // Let's rely on the fact that if enrichedStacks is populated, we might be good, 
+    // BUT we need to be careful about run switching.
+
+    // Actually, simpler:
+    // If enrichedStacks is populated, let's assume it's correct for now?
+    // No, that's dangerous.
+
+    // Let's just check if we have data.
+    // If `initialStats` was supplied and used, `enrichedStacks` is populated.
+
+    // We can just check if we need to fetch.
+    const hasData = Object.keys(enrichedStacks).length > 0;
+    if (hasData) return;
+
     async function enrichData() {
       setIsEnriching(true);
       try {
+        const stats = await getStats(runId);
+        if (stats) {
+          const newLeaderboard = summary.leaderboard.map(p => ({
+            ...p,
+            profits: stats.profits[p.name] || []
+          }));
+          setEnrichedLeaderboard(newLeaderboard);
+          setEnrichedStacks(stats.stacks);
+          setPlayerRanks(stats.ranks);
+          return;
+        }
+
         const profitsMap: Record<string, number[]> = {};
         const stacksMap: Record<string, number[][]> = {};
         const finalRanksMap: Record<string, number[]> = {};

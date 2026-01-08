@@ -60,3 +60,22 @@ export interface Game {
   players: string[];
   hands: Hand[];
 }
+
+export interface EnrichedStackStats {
+  mean: number[];
+  low: number[];
+  high: number[];
+  individual?: number[][];
+}
+
+export interface PlayerRankStats {
+  avg: number;
+  stdDev: number;
+  ci: number;
+}
+
+export interface RunStats {
+  profits: Record<string, number[]>;
+  stacks: Record<string, EnrichedStackStats>;
+  ranks: Record<string, PlayerRankStats>;
+}
