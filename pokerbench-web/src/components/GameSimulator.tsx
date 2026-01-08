@@ -9,6 +9,7 @@ import PokerScene from './PokerScene';
 import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOut, Eye, List } from 'lucide-react';
 import GameTimeline from './GameTimeline';
 import StackSizeChart from './StackSizeChart';
+import { calculateWinProbabilities } from '../lib/poker-engine';
 
 function CameraUpdater({ fov }: { fov: number }) {
   const { camera } = useThree();
@@ -38,6 +39,8 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [fov, setFov] = useState(35);
   const [zoom, setZoom] = useState(0.6);
   const [sceneReady, setSceneReady] = useState(false);
+  const [winProbabilities, setWinProbabilities] = useState<(number | null)[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   const currentHand = game.hands[currentHandIndex];
   const steps = useMemo(() => {
@@ -62,7 +65,8 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       isAction: false,
       thought: '',
       currentAction: undefined as string | undefined,
-      netGain: 0
+      netGain: 0,
+      winProbability: null as number | null
     }));
 
     let pot = 0;
@@ -157,6 +161,41 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     return { players, board, pot, dealerIndex };
   }, [currentHand, currentStepIndex, game.players, steps]);
 
+  // Calculate win probabilities lazily to not lag the simulation
+  useEffect(() => {
+    setWinProbabilities([]);
+
+    const activeWithCards = gameState.players.filter(p => p.isActive && p.cards.length === 2);
+    if (activeWithCards.length < 2) {
+      setIsCalculating(false);
+      return;
+    }
+
+    setIsCalculating(true);
+    const timer = setTimeout(() => {
+      const { players, board } = gameState;
+      if (players.length === 0) {
+        setIsCalculating(false);
+        return;
+      }
+
+      const result = calculateWinProbabilities(players, board);
+      setWinProbabilities(result);
+      setIsCalculating(false);
+    }, isPlaying ? 200 : 50);
+
+    return () => clearTimeout(timer);
+  }, [gameState.players, gameState.board, isPlaying]);
+
+  // Merge win probabilities into game state for the scene
+  const scenePlayers = useMemo(() => {
+    return gameState.players.map((p, i) => ({
+      ...p,
+      winProbability: winProbabilities[i] ?? null,
+      isCalculating: isCalculating && p.isActive && p.cards.length === 2
+    }));
+  }, [gameState.players, winProbabilities, isCalculating]);
+
   // Auto-play logic
 
   const stateRef = useRef({ currentStepIndex, currentHandIndex, steps, game });
@@ -243,7 +282,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
           <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}>
             <CameraUpdater fov={fov} />
             <PokerScene
-              players={gameState.players}
+              players={scenePlayers}
               board={gameState.board}
               pot={gameState.pot}
               dealerIndex={gameState.dealerIndex}

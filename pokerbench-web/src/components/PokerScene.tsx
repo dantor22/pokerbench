@@ -24,6 +24,8 @@ interface PlayerState {
   currentAction?: string; // e.g. "check", "call", "raise"
   thought?: string;
   netGain?: number; // For end of hand
+  winProbability?: number | null;
+  isCalculating?: boolean;
 }
 
 interface PokerSceneProps {
@@ -168,9 +170,24 @@ const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerSt
                   <span className="inline-block tracking-wide">{data.displayName || data.name}</span>
                 </div>
 
-                {/* Stack - Clean Pill */}
-                <div className="player-stack-badge">
-                  ${data.stack.toLocaleString()}
+                <div className="badge-row">
+                  {/* Stack - Clean Pill */}
+                  <div className="player-stack-badge">
+                    ${data.stack.toLocaleString()}
+                  </div>
+
+                  {/* Win Probability Display */}
+                  {data.isCalculating ? (
+                    <div className="flex items-center justify-center" style={{ width: '2.2rem', height: '1.25rem' }}>
+                      <div className="equity-spinner" />
+                    </div>
+                  ) : (
+                    data.isActive && data.winProbability !== undefined && data.winProbability !== null && (
+                      <div className="equity-bubble animate-in zoom-in duration-300">
+                        {data.winProbability.toFixed(0)}%
+                      </div>
+                    )
+                  )}
                 </div>
 
                 {data.netGain !== undefined && data.netGain !== 0 && (

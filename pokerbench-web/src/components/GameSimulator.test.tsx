@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import GameSimulator from './GameSimulator';
 
@@ -8,8 +8,18 @@ vi.mock('@react-three/fiber', () => ({
   useThree: () => ({ camera: { type: 'PerspectiveCamera', updateProjectionMatrix: vi.fn() } }),
 }));
 
+const mockCalculate = vi.fn();
+vi.mock('../lib/poker-engine', () => ({
+  calculateWinProbabilities: (...args: any[]) => mockCalculate(...args),
+  normalizeCard: (c: string) => c
+}));
+
+const mockPokerSceneProps = vi.fn();
 vi.mock('./PokerScene', () => ({
-  default: () => <div data-testid="poker-scene" />
+  default: (props: any) => {
+    mockPokerSceneProps(props);
+    return <div data-testid="poker-scene" />;
+  }
 }));
 
 describe('GameSimulator', () => {
@@ -48,5 +58,42 @@ describe('GameSimulator', () => {
   it('renders the 3D scene container', () => {
     render(<GameSimulator game={mockGame as any} />);
     expect(screen.getByTestId('canvas')).toBeInTheDocument();
+  });
+
+  it('calculates win probabilities lazily', async () => {
+    vi.useFakeTimers();
+    mockCalculate.mockReturnValue([80, 20]);
+
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Initially probabilities should be null or empty
+    const initialProps = mockPokerSceneProps.mock.calls[0][0];
+    expect(initialProps.players[0].winProbability).toBe(null);
+
+    // Advance time to trigger lazy calculation
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // Check if calculate was called
+    expect(mockCalculate).toHaveBeenCalled();
+
+    // Check props
+    const lastProps = mockPokerSceneProps.mock.calls[mockPokerSceneProps.mock.calls.length - 1][0];
+    expect(lastProps.players[0].winProbability).toBe(80);
+    expect(lastProps.players[1].winProbability).toBe(20);
+
+    vi.useRealTimers();
+  });
+
+  it('shows calculating state while pending', async () => {
+    vi.useFakeTimers();
+    render(<GameSimulator game={mockGame as any} />);
+
+    // After render but before timer, should be calculating
+    const props = mockPokerSceneProps.mock.calls[mockPokerSceneProps.mock.calls.length - 1][0];
+    expect(props.players[0].isCalculating).toBe(true);
+
+    vi.useRealTimers();
   });
 });
