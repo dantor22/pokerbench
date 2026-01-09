@@ -301,7 +301,21 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
           <div className="flex-responsive-tight">
             <div className="flex items-center gap-1">
               <button onClick={handlePrevHand} className="btn-control" style={{ marginRight: '4px' }} title="Previous Hand"><SkipBack size={14} /></button>
-              <button onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))} className="btn-control" title="Previous Step"><Rewind size={14} /></button>
+              <button
+                onClick={() => {
+                  if (currentStepIndex > 0) {
+                    setCurrentStepIndex(currentStepIndex - 1);
+                  } else if (currentHandIndex > 0) {
+                    const prevHand = game.hands[currentHandIndex - 1];
+                    setCurrentHandIndex(currentHandIndex - 1);
+                    setCurrentStepIndex(prevHand.actions.length - 1);
+                  }
+                }}
+                className="btn-control"
+                title="Previous Step"
+              >
+                <Rewind size={14} />
+              </button>
 
               <div style={{ margin: '0 4px' }}>
                 <button
@@ -313,7 +327,19 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
                 </button>
               </div>
 
-              <button onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))} className="btn-control" title="Next Step"><FastForward size={14} /></button>
+              <button
+                onClick={() => {
+                  if (currentStepIndex < steps.length - 1) {
+                    setCurrentStepIndex(currentStepIndex + 1);
+                  } else {
+                    handleNextHand();
+                  }
+                }}
+                className="btn-control"
+                title="Next Step"
+              >
+                <FastForward size={14} />
+              </button>
               <button onClick={handleNextHand} className="btn-control" style={{ marginLeft: '4px' }} title="Next Hand"><SkipForward size={14} /></button>
             </div>
 
