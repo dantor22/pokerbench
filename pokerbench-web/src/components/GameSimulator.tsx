@@ -13,6 +13,7 @@ import StackSizeChart from './StackSizeChart';
 import GameStats from './GameStats';
 import { calculateWinProbabilities } from '../lib/poker-engine';
 import { useTTS } from '../lib/hooks/useTTS';
+import { transformPokerThoughts } from '../lib/poker-tts-utils';
 
 function CameraUpdater({ fov }: { fov: number }) {
   const { camera } = useThree();
@@ -229,7 +230,9 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       lastSpokenStepRef.current = stepKey;
       const modelConfig = MODEL_CONFIG[activePlayer.name as keyof typeof MODEL_CONFIG] || {};
 
-      speak(activePlayer.thought, {
+      const transformedThought = transformPokerThoughts(activePlayer.thought);
+
+      speak(transformedThought, {
         voice: modelConfig.voice,
         nativeVoice: modelConfig.nativeVoice
       });
@@ -270,6 +273,29 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       isCalculating: isCalculating && p.isActive && p.cards.length === 2
     }));
   }, [gameState.players, winProbabilities, isCalculating]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault(); // Prevent scrolling
+        setIsPlaying(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Auto-play logic
 
