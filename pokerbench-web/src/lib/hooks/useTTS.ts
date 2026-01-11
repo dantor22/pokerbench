@@ -62,7 +62,7 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
     setIsLoading(false);
   }, []);
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, options?: { voice?: string, nativeVoice?: string }) => {
     if (!enabled || !text) return;
 
     cancel();
@@ -72,7 +72,8 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
       try {
         setIsActive(true); // Pause game immediately
         setIsLoading(true); // Signal buffering (can pause recorder)
-        setVoiceName("OpenAI (echo)");
+        const selectedVoice = options?.voice || "echo";
+        setVoiceName(`OpenAI (${selectedVoice})`);
 
         const controller = new AbortController();
         abortControllerRef.current = controller;
@@ -86,7 +87,7 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
           body: JSON.stringify({
             model: "tts-1",
             input: text,
-            voice: "echo",
+            voice: selectedVoice,
             response_format: "mp3",
             speed: 1.1
           }),
@@ -156,7 +157,15 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
       utteranceRef.current = utterance;
 
       const voices = synthRef.current.getVoices();
-      let preferredVoice = voices.find(v => v.name.includes('Google US English'));
+
+      let preferredVoice = null;
+      if (options?.nativeVoice) {
+        preferredVoice = voices.find(v => v.name.includes(options.nativeVoice as string));
+      }
+
+      if (!preferredVoice) {
+        preferredVoice = voices.find(v => v.name.includes('Google US English'));
+      }
       if (!preferredVoice) preferredVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'));
       if (!preferredVoice) preferredVoice = voices.find(v => v.lang === 'en-US');
       if (!preferredVoice) preferredVoice = voices[0];

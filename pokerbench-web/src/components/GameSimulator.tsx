@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import ReasoningOverlay from './poker/ReasoningOverlay';
 import { Game } from '../lib/types';
-import { formatModelName } from '../lib/constants';
+import { formatModelName, MODEL_CONFIG } from '../lib/constants';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import PokerScene from './PokerScene';
@@ -63,6 +63,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   };
 
   const videoRecorderRef = useRef<MediaRecorder | null>(null);
+  const lastSpokenStepRef = useRef<string | null>(null); // Track last spoken "handId-stepIndex"
 
   const currentHand = game.hands[currentHandIndex];
   const steps = useMemo(() => {
@@ -78,12 +79,12 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     }
   });
 
-  const stateRef = useRef({ currentStepIndex, steps, currentHandIndex, game, isTTSActive }); // keep ref in sync
+  const stateRef = useRef({ currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode }); // keep ref in sync
 
   // Update ref when state changes
   useEffect(() => {
-    stateRef.current = { currentStepIndex, steps, currentHandIndex, game, isTTSActive };
-  }, [currentStepIndex, steps, currentHandIndex, game, isTTSActive]);
+    stateRef.current = { currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode };
+  }, [currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode]);
 
   // SMART RECORDER PAUSE: Edit out latency!
   useEffect(() => {
@@ -199,7 +200,6 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
           if (action.action === 'fold') {
             p.isActive = false;
             p.isFolded = true;
-            p.thought = ''; // Clear thought on fold usually
           }
         }
       }
@@ -220,12 +220,21 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   useEffect(() => {
     if (!isYouTubeMode) return;
 
+    const currentHandId = currentHand?.hand_number || currentHandIndex;
+    const stepKey = `${currentHandId}-${currentStepIndex}`;
+
     // Find active thought
     const activePlayer = gameState.players.find(p => p.isAction && p.thought);
-    if (activePlayer && activePlayer.thought) {
-      speak(`${activePlayer.displayName} thinks: ${activePlayer.thought}`);
+    if (activePlayer && activePlayer.thought && lastSpokenStepRef.current !== stepKey) {
+      lastSpokenStepRef.current = stepKey;
+      const modelConfig = MODEL_CONFIG[activePlayer.name as keyof typeof MODEL_CONFIG] || {};
+
+      speak(activePlayer.thought, {
+        voice: modelConfig.voice,
+        nativeVoice: modelConfig.nativeVoice
+      });
     }
-  }, [currentStepIndex, isYouTubeMode]); 
+  }, [currentStepIndex, currentHandIndex, isYouTubeMode, gameState.players, speak]); 
 
   // Calculate win probabilities lazily to not lag the simulation
   useEffect(() => {
@@ -269,10 +278,19 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     if (!isPlaying) return;
 
     const tick = () => {
-      const { currentStepIndex, steps, currentHandIndex, game, isTTSActive } = stateRef.current;
+      const { currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode } = stateRef.current;
 
-      // Pause if TTS is speaking
-      if (isTTSActive) return;
+      // Pause if TTS is speaking or loading
+      if (isYouTubeMode) {
+        if (isTTSActive || isTTSLoading) return;
+
+        // If current step has a thought we haven't spoken yet, wait for the effect to trigger speak()
+        const activeAction = steps[currentStepIndex];
+        const stepKey = `${game.hands[currentHandIndex]?.hand_number || currentHandIndex}-${currentStepIndex}`;
+        if (activeAction?.type === 'player_action' && activeAction.thought && lastSpokenStepRef.current !== stepKey) {
+          return;
+        }
+      }
 
       if (currentStepIndex < steps.length - 1) {
         setCurrentStepIndex(prev => prev + 1);
@@ -327,8 +345,8 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           displaySurface: ['browser'],
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
           frameRate: 60
         },
         audio: {
@@ -360,8 +378,8 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
       // Create a canvas to draw the cropped video
       const canvas = document.createElement('canvas');
-      canvas.width = 1920;
-      canvas.height = 1080;
+      canvas.width = 3840;
+      canvas.height = 2160;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
@@ -411,7 +429,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
       const recorder = new MediaRecorder(combinedStream, {
         mimeType: 'video/webm;codecs=vp9,opus', // Explicit audio codec
-        videoBitsPerSecond: 8000000
+        videoBitsPerSecond: 60000000 // 60Mbps for ultra-high quality 4K
       });
       const chunks: Blob[] = [];
 
@@ -459,7 +477,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   return (
     <div className={`flex flex-col gap-2 mb-0 select-none ${isYouTubeMode ? 'youtube-mode' : ''}`}>
       <div
-        className={`card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container transition-all duration-300 mx-auto ${isYouTubeMode ? 'aspect-video w-full max-w-[1280px] border-4 border-slate-900 shadow-2xl relative' : ''
+        className={`card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container transition-all duration-300 mx-auto ${isYouTubeMode ? 'aspect-video w-full max-w-[3840px] border-4 border-slate-900 shadow-2xl relative' : ''
           }`}
       >
         <div className={`absolute top-4 left-4 z-10 select-none transition-opacity ${isRecording ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
@@ -487,7 +505,12 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         )}
 
         <Suspense fallback={null}>
-          <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}>
+          <Canvas
+            shadows
+            camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}
+            dpr={[1, 3]}
+            gl={{ antialias: true, powerPreference: "high-performance" }}
+          >
             <CameraUpdater fov={fov} />
             <PokerScene
               players={scenePlayers}
