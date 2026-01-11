@@ -19,4 +19,4 @@ Try out https://pokerbench.adfontes.io/ for game visualizations, stats, etc.
 2. [PokerBench: Training Large Language Models to become Professional Poker Players](https://arxiv.org/html/2501.08328v2)
 3. [Poker Variance Calculator](https://www.primedope.com/poker-variance-calculator/)
 
-Note: This project is licensed under the MIT License with the Commons Clause restriction. Commercial use and redistribution for a fee require explicit permission. Reach out to https://x.com/adfontes_ for more information.
+Note: This project is licensed under the MIT License with the Commons Clause restriction. Commercial use and redistribution for a fee require explicit permission. Reach out to [x.com/adfontes_](https://x.com/adfontes_) for more information.
