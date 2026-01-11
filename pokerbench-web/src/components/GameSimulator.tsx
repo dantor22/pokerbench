@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import ReasoningOverlay from './poker/ReasoningOverlay';
 import { Game } from '../lib/types';
 import { formatModelName } from '../lib/constants';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import PokerScene from './PokerScene';
-import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOut, Eye, List } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOut, Eye, List, Youtube, Video, StopCircle } from 'lucide-react';
 import GameTimeline from './GameTimeline';
 import StackSizeChart from './StackSizeChart';
 import GameStats from './GameStats';
 import { calculateWinProbabilities } from '../lib/poker-engine';
+import { useTTS } from '../lib/hooks/useTTS';
 
 function CameraUpdater({ fov }: { fov: number }) {
   const { camera } = useThree();
@@ -43,10 +45,61 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [winProbabilities, setWinProbabilities] = useState<(number | null)[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
 
+  // YouTube Mode State
+  const [isYouTubeMode, setIsYouTubeMode] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [openAIKey, setOpenAIKey] = useState('');
+
+  // Load key from storage
+  useEffect(() => {
+    const key = localStorage.getItem('openai_tts_key');
+    if (key) setOpenAIKey(key);
+  }, []);
+
+  const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setOpenAIKey(val);
+    localStorage.setItem('openai_tts_key', val);
+  };
+
+  const videoRecorderRef = useRef<MediaRecorder | null>(null);
+
   const currentHand = game.hands[currentHandIndex];
   const steps = useMemo(() => {
     return currentHand?.actions || [];
   }, [currentHand]);
+
+  // TTS Hook
+  const { speak, cancel, isSpeaking, isActive: isTTSActive, isLoading: isTTSLoading, voiceName } = useTTS({
+    enabled: isYouTubeMode,
+    openAIKey: openAIKey, // Pass key to hook
+    onEnd: () => {
+      // Resume playback logic handled in tick
+    }
+  });
+
+  const stateRef = useRef({ currentStepIndex, steps, currentHandIndex, game, isTTSActive }); // keep ref in sync
+
+  // Update ref when state changes
+  useEffect(() => {
+    stateRef.current = { currentStepIndex, steps, currentHandIndex, game, isTTSActive };
+  }, [currentStepIndex, steps, currentHandIndex, game, isTTSActive]);
+
+  // SMART RECORDER PAUSE: Edit out latency!
+  useEffect(() => {
+    if (!isRecording || !videoRecorderRef.current) return;
+
+    // If TTS is buffering, PAUSE recording to skip the silence
+    if (isTTSLoading && videoRecorderRef.current.state === 'recording') {
+      videoRecorderRef.current.pause();
+    }
+    // When buffer finishes, RESUME recording
+    else if (!isTTSLoading && videoRecorderRef.current.state === 'paused') {
+      videoRecorderRef.current.resume();
+    }
+  }, [isTTSLoading, isRecording]);
+
+  const useTTSResult = { voiceName }; // Helper for the render block below where I couldn't easily change variable scope logic without bigger diffs
 
   // Reconstruct state for the current step
   const gameState = useMemo(() => {
@@ -146,6 +199,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
           if (action.action === 'fold') {
             p.isActive = false;
             p.isFolded = true;
+            p.thought = ''; // Clear thought on fold usually
           }
         }
       }
@@ -161,6 +215,17 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
     return { players, board, pot, dealerIndex };
   }, [currentHand, currentStepIndex, game.players, steps]);
+
+  // TTS Trigger Effect
+  useEffect(() => {
+    if (!isYouTubeMode) return;
+
+    // Find active thought
+    const activePlayer = gameState.players.find(p => p.isAction && p.thought);
+    if (activePlayer && activePlayer.thought) {
+      speak(`${activePlayer.displayName} thinks: ${activePlayer.thought}`);
+    }
+  }, [currentStepIndex, isYouTubeMode]); 
 
   // Calculate win probabilities lazily to not lag the simulation
   useEffect(() => {
@@ -199,14 +264,16 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
   // Auto-play logic
 
-  const stateRef = useRef({ currentStepIndex, currentHandIndex, steps, game });
-  stateRef.current = { currentStepIndex, currentHandIndex, steps, game };
 
   useEffect(() => {
     if (!isPlaying) return;
 
     const tick = () => {
-      const { currentStepIndex, steps, currentHandIndex, game } = stateRef.current;
+      const { currentStepIndex, steps, currentHandIndex, game, isTTSActive } = stateRef.current;
+
+      // Pause if TTS is speaking
+      if (isTTSActive) return;
+
       if (currentStepIndex < steps.length - 1) {
         setCurrentStepIndex(prev => prev + 1);
       } else {
@@ -224,12 +291,13 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     const interval = setInterval(tick, 2000 / playbackSpeed);
 
     return () => clearInterval(interval);
-  }, [isPlaying, playbackSpeed]);
+  }, [isPlaying, playbackSpeed, isTTSActive]); 
 
   const handleNextHand = () => {
     if (currentHandIndex < game.hands.length - 1) {
       setCurrentHandIndex(prev => prev + 1);
       setCurrentStepIndex(0);
+      cancel(); // Stop speaking on manual nav
     }
   };
 
@@ -237,11 +305,147 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     if (currentHandIndex > 0) {
       setCurrentHandIndex(prev => prev - 1);
       setCurrentStepIndex(0);
+      cancel();
     }
   };
 
   const handleStepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCurrentStepIndex(Number(e.target.value));
+    cancel();
+  };
+
+  // Recording Logic
+  const startRecording = async () => {
+    // strict guidance
+    const confirmReady = window.confirm(
+      "IMPORTANT FOR AUDIO:\n\n1. In the next popup, select the 'This Tab' option (not Window/Screen).\n2. You MUST check the 'Also share tab audio' box.\n\nClick OK to proceed."
+    );
+    if (!confirmReady) return;
+
+    try {
+      // @ts-ignore
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: ['browser'],
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: 60
+        },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        },
+        selfBrowserSurface: 'include',
+        preferCurrentTab: true
+      });
+
+      if (displayStream.getAudioTracks().length === 0) {
+        alert('NO AUDIO DETECTED!\n\nYou must check "Also share tab audio" in the popup for TTS to work.\n\nPlease reload and try again.');
+        displayStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      // Play a test beep to "wake up" the audio graph and verify capture
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 440; // A4
+      gainNode.gain.value = 0.1;
+      oscillator.start();
+      setTimeout(() => oscillator.stop(), 200);
+
+      // Create a canvas to draw the cropped video
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Create a hidden video element to play the stream (required to capture it on canvas)
+      // We must mute it locally to prevent feedback, but we will capture the audio tracks directly from the stream
+      const video = document.createElement('video');
+      video.srcObject = displayStream;
+      video.muted = true;
+      video.play();
+
+      const stream = canvas.captureStream(60); // 60 FPS
+      const combinedStream = new MediaStream([
+        ...stream.getVideoTracks(),
+        ...displayStream.getAudioTracks() // capture the raw system audio
+      ]);
+
+      const drawLoop = () => {
+        if (video.paused || video.ended) return;
+
+        const container = document.querySelector('.poker-scene-container');
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const videoWidth = video.videoWidth;
+          const videoHeight = video.videoHeight;
+
+          const scaleX = videoWidth / window.innerWidth;
+          const scaleY = videoHeight / window.innerHeight;
+
+          ctx.fillStyle = 'black';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.drawImage(
+            video,
+            rect.left * scaleX, rect.top * scaleY, rect.width * scaleX, rect.height * scaleY,
+            0, 0, canvas.width, canvas.height
+          );
+        } else {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        }
+
+        requestAnimationFrame(drawLoop);
+      };
+
+      video.onloadedmetadata = () => {
+        drawLoop();
+      };
+
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType: 'video/webm;codecs=vp9,opus', // Explicit audio codec
+        videoBitsPerSecond: 8000000
+      });
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `poker-hand-${currentHandIndex + 1}.webm`;
+        a.click();
+
+        // Cleanup
+        displayStream.getTracks().forEach(t => t.stop());
+      };
+
+      recorder.start();
+      videoRecorderRef.current = recorder;
+      setIsRecording(true);
+      // Auto-enter cinematic mode implicitly via isRecording
+    } catch (err) {
+      console.error("Error starting recording:", err);
+      // alert("Failed to start recording. See console for details.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (videoRecorderRef.current) {
+      videoRecorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
   if (!currentHand) {
@@ -253,9 +457,12 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 mb-0 select-none">
-      <div className="card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container">
-        <div className="absolute top-4 left-4 z-10 select-none">
+    <div className={`flex flex-col gap-2 mb-0 select-none ${isYouTubeMode ? 'youtube-mode' : ''}`}>
+      <div
+        className={`card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container transition-all duration-300 mx-auto ${isYouTubeMode ? 'aspect-video w-full max-w-[1280px] border-4 border-slate-900 shadow-2xl relative' : ''
+          }`}
+      >
+        <div className={`absolute top-4 left-4 z-10 select-none transition-opacity ${isRecording ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
           <h2 className="text-2xl font-bold bg-black-50 px-2 rounded">Hand #{currentHand.hand_number}</h2>
           <div className="mt-2 space-y-1">
             {currentHand.results.length > 0 && currentStepIndex >= steps.length - 1 && (
@@ -290,21 +497,30 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               zoomLevel={zoom}
               onZoomChange={setZoom}
               onSceneReady={() => setSceneReady(true)}
+              isYouTubeMode={isYouTubeMode}
             />
           </Canvas>
         </Suspense>
+
+        <ReasoningOverlay
+          isVisible={isYouTubeMode}
+          thought={gameState.players.find(p => p.thought)?.thought || ''}
+          playerName={gameState.players.find(p => p.thought)?.displayName || gameState.players.find(p => p.thought)?.name}
+        />
       </div>
 
-      <div className="layout-split mb-0">
+      <div className={`layout-split mb-0 transition-all duration-500 ${isRecording ? 'opacity-0 h-0 overflow-hidden m-0' : 'opacity-100'}`}>
         {/* Control Panel (Left) */}
         <div className="control-panel mb-0 h-full flex flex-col gap-4">
           <div className="flex-responsive-tight">
             <div className="flex items-center gap-1">
-              <button onClick={handlePrevHand} className="btn-control" style={{ marginRight: '4px' }} title="Previous Hand"><SkipBack size={14} /></button>
+              <button type="button" onClick={handlePrevHand} className="btn-control" style={{ marginRight: '4px' }} title="Previous Hand"><SkipBack size={14} /></button>
               <button
+                type="button"
                 onClick={() => {
                   if (currentStepIndex > 0) {
                     setCurrentStepIndex(currentStepIndex - 1);
+                    cancel();
                   } else if (currentHandIndex > 0) {
                     const prevHand = game.hands[currentHandIndex - 1];
                     setCurrentHandIndex(currentHandIndex - 1);
@@ -319,6 +535,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
               <div style={{ margin: '0 4px' }}>
                 <button
+                  type="button"
                   onClick={() => setIsPlaying(!isPlaying)}
                   className="btn-play"
                   title={isPlaying ? "Pause" : "Play"}
@@ -328,9 +545,11 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   if (currentStepIndex < steps.length - 1) {
                     setCurrentStepIndex(currentStepIndex + 1);
+                    cancel();
                   } else {
                     handleNextHand();
                   }
@@ -340,7 +559,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               >
                 <FastForward size={14} />
               </button>
-              <button onClick={handleNextHand} className="btn-control" style={{ marginLeft: '4px' }} title="Next Hand"><SkipForward size={14} /></button>
+              <button type="button" onClick={handleNextHand} className="btn-control" style={{ marginLeft: '4px' }} title="Next Hand"><SkipForward size={14} /></button>
             </div>
 
             <div className="flex items-center gap-3" style={{ background: 'rgba(30, 41, 59, 0.3)', padding: '0.375rem', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
@@ -348,6 +567,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               <div className="flex gap-2">
                 {[0.5, 1, 2, 5].map(speed => (
                   <button
+                    type="button"
                     key={speed}
                     onClick={() => setPlaybackSpeed(speed)}
                     className={`speed-toggle ${playbackSpeed === speed ? 'active' : ''}`}
@@ -418,50 +638,130 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
               <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
 
+              {/* YouTube Mode Toggle */}
               <button
-                onClick={() => { setFov(35); setZoom(0.6); }}
-                className="text-xs font-bold text-slate-400 hover:text-white transition-colors shrink-0 px-2 py-1 rounded hover:bg-white/5"
+                type="button"
+                onClick={() => setIsYouTubeMode(!isYouTubeMode)}
+                className="btn-control transition-all duration-300"
+                style={{
+                  backgroundColor: isYouTubeMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(30, 41, 59, 0.5)',
+                  color: isYouTubeMode ? '#fff' : '#94a3b8',
+                  border: `1px solid ${isYouTubeMode ? 'rgba(239, 68, 68, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                  boxShadow: isYouTubeMode ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  width: 'auto',
+                  height: 'auto',
+                  gap: '10px',
+                  whiteSpace: 'nowrap'
+                }}
+                title="Toggle YouTube Generation Mode"
               >
-                Reset
+                <Youtube size={18} color={isYouTubeMode ? '#fff' : '#ef4444'} />
+                <span style={{ fontSize: '0.75rem', fontWeight: '900', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
+                  {isYouTubeMode ? 'ON AIR' : 'YOUTUBE MODE'}
+                </span>
               </button>
+
+              {isYouTubeMode && (
+                <button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className={`btn-control transition-all duration-300 ${isRecording ? 'animate-pulse' : ''}`}
+                  style={{
+                    background: isRecording
+                      ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'
+                      : 'rgba(59, 130, 246, 0.2)',
+                    color: '#fff',
+                    border: `1px solid ${isRecording ? 'rgba(255, 255, 255, 0.3)' : 'rgba(59, 130, 246, 0.5)'}`,
+                    boxShadow: isRecording ? '0 0 25px rgba(239, 68, 68, 0.5)' : 'none',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '8px 16px',
+                    width: 'auto',
+                    height: 'auto',
+                    gap: '10px',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title={isRecording ? "Stop Recording" : "Start Recording"}
+                >
+                  {isRecording ? <StopCircle size={18} /> : <Video size={18} />}
+                  <span style={{ fontSize: '0.75rem', fontWeight: '900', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
+                    {isRecording ? "STOP REC" : "REC VIDEO"}
+                  </span>
+                </button>
+              )}
+
+              {isYouTubeMode && !openAIKey && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <input
+                        type="password"
+                        placeholder="OpenAI Key (sk-...)"
+                        value={openAIKey}
+                        onChange={handleKeyChange}
+                        style={{
+                          background: 'rgba(0, 0, 0, 0.5)',
+                          border: '1px solid rgba(51, 65, 85, 1)',
+                          borderRadius: '4px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          color: 'white',
+                          width: '120px',
+                          transition: 'width 0.2s'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Thoughts Panel (Right) - Persistent to prevent layout shift */}
-        <div className="card border-l-4 border-blue-500 mb-0 flex flex-col overflow-hidden h-full" style={{ minHeight: '160px' }}>
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10 shrink-0">
-            {gameState.players.find(p => p.thought)?.thought ? (
-              <>
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <span className="font-bold text-blue-400">
-                  {gameState.players.find(p => p.thought)?.displayName || gameState.players.find(p => p.thought)?.name}
-                </span>
-                <span className="text-xs text-slate-500 uppercase tracking-wider font-mono">
-                  {'// REASONING TRACE'}
-                </span>
-              </>
-            ) : (
-              <span className="text-xs text-slate-600 uppercase tracking-wider font-mono">{'// WAITING FOR ACTION'}</span>
-            )}
+        {/* Thoughts Panel (Right) - Hidden in YT Mode since we use Bubbles */}
+        {!isYouTubeMode && (
+          <div className="card border-l-4 border-blue-500 mb-0 flex flex-col overflow-hidden h-full" style={{ minHeight: '160px' }}>
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10 shrink-0">
+              {gameState.players.find(p => p.thought)?.thought ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="font-bold text-blue-400">
+                    {gameState.players.find(p => p.thought)?.displayName || gameState.players.find(p => p.thought)?.name}
+                  </span>
+                  <span className="text-xs text-slate-500 uppercase tracking-wider font-mono">
+                    {'// REASONING TRACE'}
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs text-slate-600 uppercase tracking-wider font-mono">{'// WAITING FOR ACTION'}</span>
+              )}
+            </div>
+            <div className="text-slate-300 text-sm leading-relaxed font-mono whitespace-pre-wrap flex-1 overflow-y-auto pr-2 custom-scrollbar select-text">
+              {gameState.players.find(p => p.thought)?.thought || <span className="text-slate-700 italic">No active thoughts...</span>}
+            </div>
           </div>
-          <div className="text-slate-300 text-sm leading-relaxed font-mono whitespace-pre-wrap flex-1 overflow-y-auto pr-2 custom-scrollbar select-text">
-            {gameState.players.find(p => p.thought)?.thought || <span className="text-slate-700 italic">No active thoughts...</span>}
-          </div>
-        </div>
+        )}
       </div>
 
-      <GameTimeline
-        hands={game.hands}
-        currentHandIndex={currentHandIndex}
-        onHandSelect={(index) => {
-          setCurrentHandIndex(index);
-          setCurrentStepIndex(0);
-          setIsPlaying(false);
-        }}
-      />
-      <StackSizeChart game={game} currentHandIndex={currentHandIndex} runId={runId} />
-      <GameStats game={game} currentHandIndex={currentHandIndex} runId={runId} />
+      <div className={`transition-all duration-500 ${isRecording ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+        <GameTimeline
+          hands={game.hands}
+          currentHandIndex={currentHandIndex}
+          onHandSelect={(index) => {
+            setCurrentHandIndex(index);
+            setCurrentStepIndex(0);
+            setIsPlaying(false);
+            cancel();
+          }}
+        />
+        <StackSizeChart game={game} currentHandIndex={currentHandIndex} runId={runId} />
+        <GameStats game={game} currentHandIndex={currentHandIndex} runId={runId} />
+      </div>
     </div>
   );
 }

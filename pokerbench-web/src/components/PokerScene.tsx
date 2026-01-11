@@ -11,6 +11,7 @@ import Avatar from './poker/Avatar';
 import Room from './poker/Room';
 import DealerButton from './poker/DealerButton';
 
+
 interface PlayerState {
   name: string;
   displayName?: string;
@@ -33,9 +34,10 @@ interface PokerSceneProps {
   board: string[];
   pot: number;
   dealerIndex: number;
+  isYouTubeMode?: boolean;
 }
 
-const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerState; index: number; totalPlayers: number; tableScale: number }) => {
+const PlayerGroup = ({ data, index, totalPlayers, tableScale, isYouTubeMode }: { data: PlayerState; index: number; totalPlayers: number; tableScale: number; isYouTubeMode?: boolean }) => {
   const badgeRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
@@ -70,6 +72,8 @@ const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerSt
           isAction={data.isAction}
           isDealer={data.isDealer}
         />
+
+
 
         {/* Active Cards - Face Up, facing camera */}
         {data.isActive && data.cards.length > 0 && (
@@ -204,7 +208,7 @@ const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerSt
   );
 };
 
-export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange, onSceneReady }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void; onSceneReady?: () => void }) {
+export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange, onSceneReady, isYouTubeMode }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void; onSceneReady?: () => void }) {
   const potBadgeRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
@@ -317,7 +321,7 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
 
         {/* Players */}
         {players.map((player, i) => (
-          <PlayerGroup key={player.name} data={player} index={i} totalPlayers={players.length} tableScale={tableScale} />
+          <PlayerGroup key={player.name} data={player} index={i} totalPlayers={players.length} tableScale={tableScale} isYouTubeMode={isYouTubeMode} />
         ))}
       </group>
 
