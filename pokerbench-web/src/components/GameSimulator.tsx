@@ -48,8 +48,11 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
   // YouTube Mode State
   const [isYouTubeMode, setIsYouTubeMode] = useState(false);
+  const [showYouTubeControls, setShowYouTubeControls] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [openAIKey, setOpenAIKey] = useState('');
+
+  const keyHistory = useRef('');
 
   // Load key from storage
   useEffect(() => {
@@ -285,6 +288,14 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         target.isContentEditable
       ) {
         return;
+      }
+
+      // Cheat Code: "yt mode"
+      keyHistory.current = (keyHistory.current + e.key).slice(-20);
+      if (keyHistory.current.toLowerCase().endsWith('yt mode')) {
+        setShowYouTubeControls(prev => !prev);
+        // Clear history to prevent double-triggering if they keep typing
+        keyHistory.current = '';
       }
 
       if (e.code === 'Space' || e.key === ' ') {
@@ -688,31 +699,33 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
 
               {/* YouTube Mode Toggle */}
-              <button
-                type="button"
-                onClick={() => setIsYouTubeMode(!isYouTubeMode)}
-                className="btn-control transition-all duration-300"
-                style={{
-                  backgroundColor: isYouTubeMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(30, 41, 59, 0.5)',
-                  color: isYouTubeMode ? '#fff' : '#94a3b8',
-                  border: `1px solid ${isYouTubeMode ? 'rgba(239, 68, 68, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-                  boxShadow: isYouTubeMode ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '8px 16px',
-                  width: 'auto',
-                  height: 'auto',
-                  gap: '10px',
-                  whiteSpace: 'nowrap'
-                }}
-                title="Toggle YouTube Generation Mode"
-              >
-                <Youtube size={18} color={isYouTubeMode ? '#fff' : '#ef4444'} />
-                <span style={{ fontSize: '0.75rem', fontWeight: '900', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
-                  {isYouTubeMode ? 'ON AIR' : 'YOUTUBE MODE'}
-                </span>
-              </button>
+              {(showYouTubeControls || isYouTubeMode) && (
+                <button
+                  type="button"
+                  onClick={() => setIsYouTubeMode(!isYouTubeMode)}
+                  className="btn-control transition-all duration-300"
+                  style={{
+                    backgroundColor: isYouTubeMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(30, 41, 59, 0.5)',
+                    color: isYouTubeMode ? '#fff' : '#94a3b8',
+                    border: `1px solid ${isYouTubeMode ? 'rgba(239, 68, 68, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                    boxShadow: isYouTubeMode ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '8px 16px',
+                    width: 'auto',
+                    height: 'auto',
+                    gap: '10px',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title="Toggle YouTube Generation Mode"
+                >
+                  <Youtube size={18} color={isYouTubeMode ? '#fff' : '#ef4444'} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: '900', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
+                    {isYouTubeMode ? 'ON AIR' : 'YOUTUBE MODE'}
+                  </span>
+                </button>
+              )}
 
               {isYouTubeMode && (
                 <button
