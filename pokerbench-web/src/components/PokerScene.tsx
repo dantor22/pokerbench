@@ -11,6 +11,7 @@ import Avatar from './poker/Avatar';
 import Room from './poker/Room';
 import DealerButton from './poker/DealerButton';
 
+
 interface PlayerState {
   name: string;
   displayName?: string;
@@ -33,9 +34,10 @@ interface PokerSceneProps {
   board: string[];
   pot: number;
   dealerIndex: number;
+  isYouTubeMode?: boolean;
 }
 
-const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerState; index: number; totalPlayers: number; tableScale: number }) => {
+const PlayerGroup = ({ data, index, totalPlayers, tableScale, isYouTubeMode }: { data: PlayerState; index: number; totalPlayers: number; tableScale: number; isYouTubeMode?: boolean }) => {
   const badgeRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
@@ -70,6 +72,8 @@ const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerSt
           isAction={data.isAction}
           isDealer={data.isDealer}
         />
+
+
 
         {/* Active Cards - Face Up, facing camera */}
         {data.isActive && data.cards.length > 0 && (
@@ -204,7 +208,7 @@ const PlayerGroup = ({ data, index, totalPlayers, tableScale }: { data: PlayerSt
   );
 };
 
-export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange, onSceneReady }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void; onSceneReady?: () => void }) {
+export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange, onSceneReady, isYouTubeMode }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void; onSceneReady?: () => void }) {
   const potBadgeRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
@@ -240,8 +244,21 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
     }
   }, []);
 
+  // YouTube Mode Camera Defaults
+  useEffect(() => {
+    if (isYouTubeMode && controlsRef.current) {
+      const cam = camera;
+      const controls = controlsRef.current;
+
+      cam.position.set(13.881, 9.131, 12.074);
+      controls.target.set(0.387, -1.284, -1.647);
+      controls.update();
+    }
+  }, [isYouTubeMode, camera]);
+
   // Sync zoomLevel prop to Camera Distance
   useEffect(() => {
+    if (isYouTubeMode) return;
     if (controlsRef.current && zoomLevel) {
       const currentDist = controlsRef.current.getDistance();
       const targetDist = ZOOM_CONSTANT / zoomLevel;
@@ -276,7 +293,40 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
   // Auto-follow logic removed
 
 
+  // Debug: Log camera state on 'L' key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if not typing in an input
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
 
+      if (e.key === 'l' || e.key === 'L') {
+        const cam = camera;
+        const controls = controlsRef.current;
+        console.log('🎥 --- Camera State Log --- 🎥');
+        console.log(`Position: [${cam.position.x.toFixed(3)}, ${cam.position.y.toFixed(3)}, ${cam.position.z.toFixed(3)}]`);
+        // Rotation in Euler is less useful for OrbitControls usually, but good to have
+        console.log(`Rotation: [${cam.rotation.x.toFixed(3)}, ${cam.rotation.y.toFixed(3)}, ${cam.rotation.z.toFixed(3)}]`);
+
+        if (cam instanceof THREE.PerspectiveCamera) {
+          console.log(`FOV: ${cam.fov}`);
+        }
+
+        if (controls) {
+          console.log(`Target (Pan): [${controls.target.x.toFixed(3)}, ${controls.target.y.toFixed(3)}, ${controls.target.z.toFixed(3)}]`);
+          console.log(`Distance: ${controls.getDistance().toFixed(3)}`);
+          console.log(`Polar Angle: ${controls.getPolarAngle().toFixed(3)} rad`);
+          console.log(`Azimuthal Angle: ${controls.getAzimuthalAngle().toFixed(3)} rad`);
+
+          // Reconstruct the controls props to easily copy-paste
+          console.log(`\n📋 Copy-Paste Props:\ntarget={[${controls.target.x.toFixed(3)}, ${controls.target.y.toFixed(3)}, ${controls.target.z.toFixed(3)}]}\nposition={[${cam.position.x.toFixed(3)}, ${cam.position.y.toFixed(3)}, ${cam.position.z.toFixed(3)}]}`);
+        }
+        console.log('----------------------------');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [camera]);
   return (
     <>
       <Room />
@@ -317,14 +367,15 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
 
         {/* Players */}
         {players.map((player, i) => (
-          <PlayerGroup key={player.name} data={player} index={i} totalPlayers={players.length} tableScale={tableScale} />
+          <PlayerGroup key={player.name} data={player} index={i} totalPlayers={players.length} tableScale={tableScale} isYouTubeMode={isYouTubeMode} />
         ))}
       </group>
 
       <OrbitControls
         ref={controlsRef}
-        target={[-0.11, -2.45, 0.76]}
+        target={isYouTubeMode ? [0.387, -1.284, -1.647] : [-0.11, -2.45, 0.76]}
         enablePan={true}
+        enableZoom={!isYouTubeMode}
         minPolarAngle={Math.PI / 4.5}
         maxPolarAngle={Math.PI / 2.1}
         minDistance={10}

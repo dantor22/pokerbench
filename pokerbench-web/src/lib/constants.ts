@@ -18,22 +18,22 @@ export const MODEL_NAME_MAPPING: Record<string, string> = {
   "haiku": "Haiku 4.5"
 };
 
-export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInvert?: boolean; logoScale?: number }> = {
-  "Pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0 },      // Blue
-  "Minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },   // Green
-  "Claude": { color: '#fb923c', logo: '/logos/anthropic.svg' },  // Orange
-  "FiveTwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 }, // Red
-  "Elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3 },   // Cyan
-  "Flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0 },     // Purple
-  "Haiku": { color: '#fb923c', logo: '/logos/anthropic.svg' },
+export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInvert?: boolean; logoScale?: number; voice?: string; nativeVoice?: string }> = {
+  "Pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'alloy', nativeVoice: 'Samantha' },      // Blue
+  "Minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'nova', nativeVoice: 'Victoria' },   // Green
+  "Claude": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'shimmer', nativeVoice: 'Tessa' },  // Orange
+  "FiveTwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'echo', nativeVoice: 'Alex' }, // Red
+  "Elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3, voice: 'onyx', nativeVoice: 'Daniel' },   // Cyan
+  "Flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'fable', nativeVoice: 'Fred' },     // Purple
+  "Haiku": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'nova', nativeVoice: 'Victoria' },
   // Fallbacks
-  "pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0 },
-  "minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },
-  "claude": { color: '#fb923c', logo: '/logos/anthropic.svg' },
-  "fivetwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3 },
-  "elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3 },
-  "flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0 },
-  "haiku": { color: '#fb923c', logo: '/logos/anthropic.svg' },
+  "pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'alloy', nativeVoice: 'Samantha' },
+  "minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'nova', nativeVoice: 'Victoria' },
+  "claude": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'shimmer', nativeVoice: 'Tessa' },
+  "fivetwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'echo', nativeVoice: 'Alex' },
+  "elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3, voice: 'onyx', nativeVoice: 'Daniel' },
+  "flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'fable', nativeVoice: 'Fred' },
+  "haiku": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'nova', nativeVoice: 'Victoria' },
 };
 
 export function formatModelName(name: string, runId?: string): string {

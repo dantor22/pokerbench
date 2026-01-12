@@ -303,7 +303,7 @@ export default function Room() {
       {/* --- DECOR --- */}
 
       {/* Chandeliers */}
-      <Chandelier position={[0, 6, 0]} />
+      {/* <Chandelier position={[0, 6, 0]} /> */}
 
       {/* Slot Machines */}
       {/* {slotRows.map((slot, i) => (

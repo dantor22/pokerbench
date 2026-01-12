@@ -1,5 +1,22 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock speechSynthesis - MUST BE BEFORE IMPORTS THAT USE IT
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'speechSynthesis', {
+    value: {
+      speak: vi.fn(),
+      cancel: vi.fn(),
+      getVoices: vi.fn(() => []),
+      onvoiceschanged: null,
+    },
+    writable: true,
+  });
+  // Also mock SpeechSynthesisUtterance if needed
+  // @ts-ignore
+  window.SpeechSynthesisUtterance = vi.fn();
+}
+
 import GameSimulator from './GameSimulator';
 
 // Mock Canvas and PokerScene
@@ -160,5 +177,59 @@ describe('GameSimulator', () => {
     // We can check the svg class if needed, but let's just ensure it still renders.
     // The previous implementation used {currentStepIndex < steps.length - 1 ? <FastForward size={14} /> : <SkipForward size={14} />}
     // Now it's always <FastForward size={14} />
+  });
+
+  it('toggles play/pause when spacebar is pressed', async () => {
+    const multiStepGame = {
+      ...mockGame,
+      hands: [{
+        ...mockGame.hands[0],
+        actions: [
+          { type: 'player_action', player: 'Pro', action: 'bet', chips_added: 100 },
+          { type: 'player_action', player: 'Claude', action: 'call', chips_added: 100 }
+        ]
+      }]
+    };
+    const { fireEvent, waitFor } = await import('@testing-library/react');
+    render(<GameSimulator game={multiStepGame as any} />);
+
+    // Initially not playing
+    expect(screen.getByTitle('Play')).toBeInTheDocument();
+
+    // Simulate spacebar press
+    await act(async () => {
+      fireEvent.keyDown(window, { key: ' ', code: 'Space', bubbles: true });
+    });
+
+    // Now should be playing (shows Pause button)
+    await waitFor(() => expect(screen.getByTitle('Pause')).toBeInTheDocument());
+
+    // Press spacebar again
+    await act(async () => {
+      fireEvent.keyDown(window, { key: ' ', code: 'Space', bubbles: true });
+    });
+
+    // Should be paused again
+    await waitFor(() => expect(screen.getByTitle('Play')).toBeInTheDocument());
+  });
+
+  it('does not toggle play/pause when spacebar is pressed in an input', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Create a dummy input to focus on
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    // Simulate spacebar press on input
+    await act(async () => {
+      fireEvent.keyDown(input, { code: 'Space', bubbles: true });
+    });
+
+    // Should still be paused
+    expect(screen.getByTitle('Play')).toBeInTheDocument();
+
+    document.body.removeChild(input);
   });
 });
