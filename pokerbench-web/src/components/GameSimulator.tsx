@@ -379,7 +379,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
     try {
       // @ts-ignore
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+      const displayStream = await (navigator.mediaDevices as any).getDisplayMedia({
         video: {
           displaySurface: ['browser'],
           width: { ideal: 3840 },
@@ -393,11 +393,11 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         },
         selfBrowserSurface: 'include',
         preferCurrentTab: true
-      });
+      } as any);
 
       if (displayStream.getAudioTracks().length === 0) {
         alert('NO AUDIO DETECTED!\n\nYou must check "Also share tab audio" in the popup for TTS to work.\n\nPlease reload and try again.');
-        displayStream.getTracks().forEach(t => t.stop());
+        displayStream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
         return;
       }
 
@@ -483,7 +483,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         a.click();
 
         // Cleanup
-        displayStream.getTracks().forEach(t => t.stop());
+        displayStream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
       };
 
       recorder.start();

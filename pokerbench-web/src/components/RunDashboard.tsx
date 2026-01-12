@@ -1,12 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2, Youtube } from 'lucide-react';
 import RunSelector from './RunSelector';
 import { Summary, Game, PlayerStats, RunStats } from '../lib/types';
 import AggregatedProgressChart from './AggregatedProgressChart';
 import Leaderboard from './Leaderboard';
 import { getGame, getStats } from '../lib/data';
+import { YOUTUBE_LINKS } from '../lib/youtube-links';
 
 interface RunDashboardProps {
   summary: Summary;
@@ -299,19 +300,67 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
           </div>
           <div className="games-scroll-container custom-scrollbar">
             <div className="games-list">
-              {[...gameIds].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map((gameId) => (
-                <Link
-                  key={gameId}
-                  href={`${basePath}/game/${gameId}`}
-                  className="game-card group block"
-                  prefetch={false}
-                >
-                  <div className="flex justify-between items-center p-1">
-                    <span className="font-mono text-base">{gameId.replace(/_/g, ' ')}</span>
-                    <ArrowRight className="w-4 h-4 arrow-icon" />
+              {[...gameIds].sort((a, b) => {
+                const hasA = !!YOUTUBE_LINKS[`${runId}/game/${a}`];
+                const hasB = !!YOUTUBE_LINKS[`${runId}/game/${b}`];
+                if (hasA && !hasB) return -1;
+                if (!hasA && hasB) return 1;
+                return a.localeCompare(b, undefined, { numeric: true });
+              }).map((gameId) => {
+                const youtubeKey = `${runId}/game/${gameId}`;
+                const youtubeLink = YOUTUBE_LINKS[youtubeKey];
+                return (
+                  <div key={gameId} className="game-card group relative hover:border-blue-500/50 transition-all duration-200" style={{ padding: '0 .5rem' }}>
+                    <div className="flex justify-between items-center" style={{ padding: '5px 0' }}>
+                      <Link
+                        href={`${basePath}/game/${gameId}`}
+                        className="flex-1 font-mono text-base hover:text-blue-400 transition-colors"
+                        prefetch={false}
+                      >
+                        {gameId.replace(/_/g, ' ')}
+                      </Link>
+
+                      <div className="flex items-center gap-3">
+                        {youtubeLink && (
+                          <a
+                            href={youtubeLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center transition-all duration-300"
+                            style={{
+                              color: '#ef4444',
+                              backgroundColor: 'transparent',
+                              textDecoration: 'none',
+                              display: 'flex',
+                              padding: '2px'
+                            }}
+                            onMouseEnter={(e) => {
+                              const target = e.currentTarget;
+                              target.style.filter = 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.8))';
+                              target.style.transform = 'scale(1.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              const target = e.currentTarget;
+                              target.style.filter = 'none';
+                              target.style.transform = 'scale(1)';
+                            }}
+                            title="Watch on YouTube"
+                          >
+                            <Youtube size={18} style={{ fill: 'rgba(239, 68, 68, 0.1)' }} strokeWidth={2.5} />
+                          </a>
+                        )}
+                        <Link
+                          href={`${basePath}/game/${gameId}`}
+                          className="text-slate-500 group-hover:text-blue-400 flex items-center justify-center"
+                          style={{ height: '26px', width: '20px' }}
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
