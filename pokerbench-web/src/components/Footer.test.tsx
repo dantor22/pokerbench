@@ -13,6 +13,12 @@ describe('Footer', () => {
     expect(link).toHaveAttribute('href', 'https://github.com/JoeAzar/pokerbench');
   });
 
+  it('renders the YouTube link', () => {
+    const link = screen.getByRole('link', { name: /@PokerBench/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', 'https://www.youtube.com/@PokerBench');
+  });
+
   it('renders the "Built with Antigravity" link', () => {
     const link = screen.getByRole('link', { name: /Built with Antigravity/i });
     expect(link).toBeInTheDocument();

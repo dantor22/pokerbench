@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Github, Heart, X } from "lucide-react";
+import { Github, Heart, X, Youtube } from "lucide-react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 
@@ -35,6 +35,14 @@ export default function Footer() {
         >
           <Github size={16} />
           <span>JoeAzar/pokerbench</span>
+        </a>
+        <a
+          href="https://www.youtube.com/@PokerBench"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Youtube size={16} color="#ef4444" />
+          <span>@PokerBench</span>
         </a>
         <a
           href="https://antigravity.google/"
