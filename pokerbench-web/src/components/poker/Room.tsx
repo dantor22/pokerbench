@@ -196,7 +196,7 @@ const WallSegment = ({ position, rotation = [0, 0, 0], width = 10, height = 12 }
   </group>
 )
 
-export default function Room() {
+export default function Room({ isYouTubeMode }: { isYouTubeMode?: boolean }) {
   const carpetTexture = useMemo(() => generateCarpetTexture(), []);
 
   const slotRows = useMemo(() => {
@@ -300,10 +300,8 @@ export default function Room() {
 
 
 
-      {/* --- DECOR --- */}
-
       {/* Chandeliers */}
-      {/* <Chandelier position={[0, 6, 0]} /> */}
+      {!isYouTubeMode && <Chandelier position={[0, 6, 0]} />}
 
       {/* Slot Machines */}
       {/* {slotRows.map((slot, i) => (

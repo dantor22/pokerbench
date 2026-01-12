@@ -45,8 +45,13 @@ describe('Room', () => {
     expect(container.querySelectorAll('boxGeometry').length).toBeGreaterThan(0);
   });
 
-  it('renders decor (chandeliers)', () => {
+  it('renders decor (chandeliers) by default', () => {
     const { getByTestId } = render(<Room />);
     expect(getByTestId('float')).toBeInTheDocument();
+  });
+
+  it('hides decor (chandeliers) in YouTube mode', () => {
+    const { queryByTestId } = render(<Room isYouTubeMode={true} />);
+    expect(queryByTestId('float')).not.toBeInTheDocument();
   });
 });

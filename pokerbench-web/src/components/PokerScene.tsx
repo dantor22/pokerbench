@@ -329,7 +329,7 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
   }, [camera]);
   return (
     <>
-      <Room />
+      <Room isYouTubeMode={isYouTubeMode} />
 
       {/* Center Table Group */}
       <group position={[0, -2, 0]}>
