@@ -702,7 +702,13 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               {(showYouTubeControls || isYouTubeMode) && (
                 <button
                   type="button"
-                  onClick={() => setIsYouTubeMode(!isYouTubeMode)}
+                  onClick={() => {
+                    const nextMode = !isYouTubeMode;
+                    setIsYouTubeMode(nextMode);
+                    if (nextMode) {
+                      setZoom(0.85); // Sync slider to YouTube default distance
+                    }
+                  }}
                   className="btn-control transition-all duration-300"
                   style={{
                     backgroundColor: isYouTubeMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(30, 41, 59, 0.5)',

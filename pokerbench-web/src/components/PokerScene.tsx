@@ -258,7 +258,6 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
 
   // Sync zoomLevel prop to Camera Distance
   useEffect(() => {
-    if (isYouTubeMode) return;
     if (controlsRef.current && zoomLevel) {
       const currentDist = controlsRef.current.getDistance();
       const targetDist = ZOOM_CONSTANT / zoomLevel;
