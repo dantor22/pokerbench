@@ -569,7 +569,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         />
       </div>
 
-      <div className={`layout-split mb-0 transition-all duration-500 ${isRecording ? 'opacity-0 h-0 overflow-hidden m-0' : 'opacity-100'}`}>
+      <div className={`layout-split mb-0 transition-all duration-500 gap-2 ${isRecording ? 'opacity-0 h-0 overflow-hidden m-0' : 'opacity-100'}`}>
         {/* Control Panel (Left) */}
         <div className="control-panel mb-0 h-full flex flex-col gap-4">
           <div className="flex-responsive-tight">
@@ -810,7 +810,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         )}
       </div>
 
-      <div className={`transition-all duration-500 ${isRecording ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+      <div className={`transition-all duration-500 flex flex-col gap-2 ${isRecording ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
         <GameTimeline
           hands={game.hands}
           currentHandIndex={currentHandIndex}

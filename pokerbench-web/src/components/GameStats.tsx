@@ -16,7 +16,7 @@ export default function GameStats({ game, currentHandIndex, runId }: GameStatsPr
   const players = game.players;
 
   return (
-    <div className="card mt-4">
+    <div className="card">
       <h2 className="text-xl font-bold mb-4">Game Statistics</h2>
       <div className="table-container">
         <table className="table">

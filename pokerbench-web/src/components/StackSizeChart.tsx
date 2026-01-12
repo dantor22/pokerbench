@@ -81,7 +81,7 @@ export default function StackSizeChart({ game, currentHandIndex, runId }: StackS
   if (!visibleData.length) return null;
 
   return (
-    <div className="card w-full">
+    <div className="card w-full mb-0">
       <h3 className="text-sm font-bold mb-4 text-muted uppercase tracking-wider">Stack History</h3>
       <div style={{ width: '100%', height: '240px' }} className="select-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
