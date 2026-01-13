@@ -242,6 +242,27 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     }
   }, [currentStepIndex, currentHandIndex, isYouTubeMode, gameState.players, speak]); 
 
+  // Background Music
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isYouTubeMode) {
+      audio.volume = 0.05; // Low background volume
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => {
+          console.log("Audio play failed (autoplay policy?):", e);
+        });
+      }
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, [isYouTubeMode]);
+
   // Calculate win probabilities lazily to not lag the simulation
   useEffect(() => {
     setWinProbabilities([]);
@@ -518,6 +539,9 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
           }`}
       >
         <div className={`absolute top-4 left-4 z-10 select-none transition-opacity ${isRecording ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
+          {/* Background Music Audio Element */}
+          <audio ref={audioRef} src="/on_the_flip.mp3" loop />
+
           <h2 className="text-2xl font-bold bg-black-50 px-2 rounded">Hand #{currentHand.hand_number}</h2>
           <div className="mt-2 space-y-1">
             {currentHand.results.length > 0 && currentStepIndex >= steps.length - 1 && (

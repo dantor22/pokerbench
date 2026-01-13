@@ -15,6 +15,11 @@ if (typeof window !== 'undefined') {
   // Also mock SpeechSynthesisUtterance if needed
   // @ts-ignore
   window.SpeechSynthesisUtterance = vi.fn();
+
+  // Mock HTMLMediaElement for Audio
+  window.HTMLMediaElement.prototype.load = vi.fn();
+  window.HTMLMediaElement.prototype.play = vi.fn(() => Promise.resolve());
+  window.HTMLMediaElement.prototype.pause = vi.fn();
 }
 
 import GameSimulator from './GameSimulator';
