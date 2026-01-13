@@ -85,11 +85,11 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "tts-1",
+            model: "gpt-4o-mini-tts",
             input: text,
             voice: selectedVoice,
             response_format: "mp3",
-            speed: 1.1
+            speed: 1.2
           }),
           signal: controller.signal
         });
@@ -177,7 +177,7 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
         setVoiceName("Default System Voice (May not record)");
       }
 
-      utterance.rate = 1.1;
+      utterance.rate = 1.25;
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
 

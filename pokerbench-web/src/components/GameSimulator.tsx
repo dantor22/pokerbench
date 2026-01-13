@@ -249,7 +249,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (isYouTubeMode) {
+    if (isYouTubeMode && !isTTSLoading) {
       audio.volume = 0.05; // Low background volume
       const playPromise = audio.play();
       if (playPromise !== undefined) {
@@ -259,9 +259,11 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       }
     } else {
       audio.pause();
-      audio.currentTime = 0;
+      if (!isYouTubeMode) {
+        audio.currentTime = 0;
+      }
     }
-  }, [isYouTubeMode]);
+  }, [isYouTubeMode, isTTSLoading]);
 
   // Calculate win probabilities lazily to not lag the simulation
   useEffect(() => {
