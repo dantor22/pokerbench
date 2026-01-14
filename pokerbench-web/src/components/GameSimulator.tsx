@@ -15,6 +15,28 @@ import { calculateWinProbabilities } from '../lib/poker-engine';
 import { useTTS } from '../lib/hooks/useTTS';
 import { transformPokerThoughts } from '../lib/poker-tts-utils';
 
+function parseHandQueue(input: string, maxHands: number): number[] {
+  const result: number[] = [];
+  const parts = input.split(',').map(p => p.trim());
+
+  for (const part of parts) {
+    if (part.includes('-')) {
+      const [start, end] = part.split('-').map(Number);
+      if (!isNaN(start) && !isNaN(end)) {
+        for (let i = Math.max(1, start); i <= Math.min(maxHands, end); i++) {
+          result.push(i - 1);
+        }
+      }
+    } else {
+      const num = Number(part);
+      if (!isNaN(num) && num >= 1 && num <= maxHands) {
+        result.push(num - 1);
+      }
+    }
+  }
+  return Array.from(new Set(result)).sort((a, b) => a - b);
+}
+
 function CameraUpdater({ fov }: { fov: number }) {
   const { camera } = useThree();
   useEffect(() => {
@@ -51,6 +73,9 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [showYouTubeControls, setShowYouTubeControls] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [openAIKey, setOpenAIKey] = useState('');
+  const [handQueueInput, setHandQueueInput] = useState('');
+  const [handQueue, setHandQueue] = useState<number[]>([]);
+  const [isQueueRecording, setIsQueueRecording] = useState(false);
 
   const keyHistory = useRef('');
 
@@ -83,12 +108,32 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     }
   });
 
-  const stateRef = useRef({ currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode }); // keep ref in sync
+  const stateRef = useRef({
+    currentStepIndex,
+    steps,
+    currentHandIndex,
+    game,
+    isTTSActive,
+    isTTSLoading,
+    isYouTubeMode,
+    isQueueRecording,
+    handQueue
+  }); // keep ref in sync
 
   // Update ref when state changes
   useEffect(() => {
-    stateRef.current = { currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode };
-  }, [currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode]);
+    stateRef.current = {
+      currentStepIndex,
+      steps,
+      currentHandIndex,
+      game,
+      isTTSActive,
+      isTTSLoading,
+      isYouTubeMode,
+      isQueueRecording,
+      handQueue
+    };
+  }, [currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode, isQueueRecording, handQueue]);
 
   // SMART RECORDER PAUSE: Edit out latency!
   useEffect(() => {
@@ -242,8 +287,66 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     }
   }, [currentStepIndex, currentHandIndex, isYouTubeMode, gameState.players, speak]); 
 
-  // Background Music
+  // Audio Refs
   const audioRef = useRef<HTMLAudioElement>(null);
+  const shufflingCardsAudioRef = useRef<HTMLAudioElement>(null);
+  const pokerChipsAudioRef = useRef<HTMLAudioElement>(null);
+  const allInAudioRef = useRef<HTMLAudioElement>(null);
+  const chaChingAudioRef = useRef<HTMLAudioElement>(null);
+  const lastPlayedActionRef = useRef<string | null>(null);
+
+  // SFX Effect
+  useEffect(() => {
+    if (!isYouTubeMode) return;
+
+    const currentHandId = currentHand?.hand_number || currentHandIndex;
+    const actionKey = `${currentHandId}-${currentStepIndex}`;
+
+    // Prevent double-triggering on re-renders
+    if (lastPlayedActionRef.current === actionKey) return;
+    lastPlayedActionRef.current = actionKey;
+
+    // 1. Shuffling: Start of hand
+    if (currentStepIndex === 0) {
+      if (shufflingCardsAudioRef.current) {
+        shufflingCardsAudioRef.current.volume = 0.4;
+        shufflingCardsAudioRef.current.currentTime = 0;
+        shufflingCardsAudioRef.current.play().catch(() => { });
+      }
+    }
+
+    // 2. Action sounds
+    const action = steps[currentStepIndex];
+    if (action?.type === 'player_action') {
+      // All-in sound
+      if (action.action === 'all-in') {
+        if (allInAudioRef.current) {
+          allInAudioRef.current.volume = 0.5;
+          allInAudioRef.current.currentTime = 0;
+          allInAudioRef.current.play().catch(() => { });
+        }
+      }
+      // Chips sound: bet, raise, call
+      else if (action.chips_added && action.chips_added > 0) {
+        if (pokerChipsAudioRef.current) {
+          pokerChipsAudioRef.current.volume = 0.35;
+          pokerChipsAudioRef.current.currentTime = 0;
+          pokerChipsAudioRef.current.play().catch(() => { });
+        }
+      }
+    }
+
+    // 3. Cha-ching: Hand end (results displayed)
+    if (currentStepIndex === steps.length - 1 && steps.length > 0 && currentHand.results.length > 0) {
+      if (chaChingAudioRef.current) {
+        chaChingAudioRef.current.volume = 0.4;
+        chaChingAudioRef.current.currentTime = 0;
+        chaChingAudioRef.current.play().catch(() => { });
+      }
+    }
+  }, [currentStepIndex, currentHandIndex, isYouTubeMode, currentHand, steps]);
+
+  // Background Music
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -338,15 +441,18 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     if (!isPlaying) return;
 
     const tick = () => {
-      const { currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode } = stateRef.current;
+      // Use stateRef for values that change inside the interval without re-triggering the effect
+      const { currentStepIndex, steps, currentHandIndex, game, isYouTubeMode, isQueueRecording, handQueue } = stateRef.current;
 
-      // Pause if TTS is speaking or loading
+      // Use closure scope for isTTSActive/isTTSLoading to ensure we have the most up-to-date values 
+      // from the current render cycle when being called by the interval
       if (isYouTubeMode) {
         if (isTTSActive || isTTSLoading) return;
 
         // If current step has a thought we haven't spoken yet, wait for the effect to trigger speak()
         const activeAction = steps[currentStepIndex];
-        const stepKey = `${game.hands[currentHandIndex]?.hand_number || currentHandIndex}-${currentStepIndex}`;
+        const currentHandId = game.hands[currentHandIndex]?.hand_number || currentHandIndex;
+        const stepKey = `${currentHandId}-${currentStepIndex}`;
         if (activeAction?.type === 'player_action' && activeAction.thought && lastSpokenStepRef.current !== stepKey) {
           return;
         }
@@ -356,7 +462,18 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         setCurrentStepIndex(prev => prev + 1);
       } else {
         // If we're at the end of the current hand, move to the next one
-        if (currentHandIndex < game.hands.length - 1) {
+        if (isQueueRecording) {
+          const nextIdxInQueue = handQueue.indexOf(currentHandIndex) + 1;
+          if (nextIdxInQueue < handQueue.length) {
+            const nextHandIdx = handQueue[nextIdxInQueue];
+            setCurrentHandIndex(nextHandIdx);
+            setCurrentStepIndex(0);
+          } else {
+            setIsPlaying(false);
+            setIsQueueRecording(false);
+            stopRecording();
+          }
+        } else if (currentHandIndex < game.hands.length - 1) {
           setCurrentHandIndex(h => h + 1);
           setCurrentStepIndex(0);
         } else {
@@ -365,11 +482,16 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       }
     };
 
-    tick();
+    // Only tick immediately if we're not in YouTube mode or if TTS is idle
+    // This prevents double-ticking when TTS state changes re-trigger the effect
+    if (!isYouTubeMode || (!isTTSActive && !isTTSLoading)) {
+      tick();
+    }
+
     const interval = setInterval(tick, 2000 / playbackSpeed);
 
     return () => clearInterval(interval);
-  }, [isPlaying, playbackSpeed, isTTSActive]); 
+  }, [isPlaying, playbackSpeed, isYouTubeMode, isTTSActive, isTTSLoading]); 
 
   const handleNextHand = () => {
     if (currentHandIndex < game.hands.length - 1) {
@@ -393,12 +515,20 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   };
 
   // Recording Logic
-  const startRecording = async () => {
+  const startRecording = async (queue?: number[]) => {
     // strict guidance
     const confirmReady = window.confirm(
       "IMPORTANT FOR AUDIO:\n\n1. In the next popup, select the 'This Tab' option (not Window/Screen).\n2. You MUST check the 'Also share tab audio' box.\n\nClick OK to proceed."
     );
     if (!confirmReady) return;
+
+    if (queue && queue.length > 0) {
+      setIsQueueRecording(true);
+      setHandQueue(queue);
+      setCurrentHandIndex(queue[0]);
+      setCurrentStepIndex(0);
+      setIsPlaying(true);
+    }
 
     try {
       // @ts-ignore
@@ -502,7 +632,11 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `poker-hand-${currentHandIndex + 1}.webm`;
+        if (queue && queue.length > 0) {
+          a.download = `poker-batch-${queue.map(h => h + 1).join('-')}.webm`;
+        } else {
+          a.download = `poker-hand-${currentHandIndex + 1}.webm`;
+        }
         a.click();
 
         // Cleanup
@@ -523,6 +657,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     if (videoRecorderRef.current) {
       videoRecorderRef.current.stop();
       setIsRecording(false);
+      setIsQueueRecording(false);
     }
   };
 
@@ -543,6 +678,12 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         <div className={`absolute top-4 left-4 z-10 select-none transition-opacity ${isRecording ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
           {/* Background Music Audio Element */}
           <audio ref={audioRef} src="/on_the_flip.mp3" loop />
+
+          {/* SFX Audio Elements */}
+          <audio ref={shufflingCardsAudioRef} src="/shuffling_cards.mp3" />
+          <audio ref={pokerChipsAudioRef} src="/poker_chips_small.mp3" />
+          <audio ref={allInAudioRef} src="/allinpushchips.mp3" />
+          <audio ref={chaChingAudioRef} src="/register_cha_ching.mp3" />
 
           <h2 className="text-2xl font-bold bg-black-50 px-2 rounded">Hand #{currentHand.hand_number}</h2>
           <div className="mt-2 space-y-1">
@@ -760,17 +901,75 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               )}
 
               {isYouTubeMode && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Hands: 1, 3, 5-10"
+                    value={handQueueInput}
+                    onChange={(e) => setHandQueueInput(e.target.value)}
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(51, 65, 85, 1)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '0.75rem',
+                      color: 'white',
+                      width: '140px'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isRecording) {
+                        stopRecording();
+                      } else {
+                        const queue = parseHandQueue(handQueueInput, game.hands.length);
+                        if (queue.length === 0) {
+                          alert("Please enter a valid hand range (e.g. 1, 3-5)");
+                          return;
+                        }
+                        startRecording(queue);
+                      }
+                    }}
+                    className={`btn-control transition-all duration-300 ${isRecording && isQueueRecording ? 'animate-pulse' : ''}`}
+                    style={{
+                      background: isRecording && isQueueRecording
+                        ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'
+                        : 'rgba(16, 185, 129, 0.2)',
+                      color: '#fff',
+                      border: `1px solid ${isRecording && isQueueRecording ? 'rgba(255, 255, 255, 0.3)' : 'rgba(16, 185, 129, 0.5)'}`,
+                      boxShadow: isRecording && isQueueRecording ? '0 0 25px rgba(239, 68, 68, 0.5)' : 'none',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '8px 16px',
+                      width: 'auto',
+                      height: 'auto',
+                      gap: '10px',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title={isRecording && isQueueRecording ? "Stop Recording" : "Record Queue"}
+                  >
+                    {isRecording && isQueueRecording ? <StopCircle size={18} /> : <List size={18} />}
+                    <span style={{ fontSize: '0.75rem', fontWeight: '900', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
+                      {isRecording && isQueueRecording ? "STOP QUEUE" : "REC QUEUE"}
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {isYouTubeMode && (
                 <button
                   type="button"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  className={`btn-control transition-all duration-300 ${isRecording ? 'animate-pulse' : ''}`}
+                  onClick={() => isRecording ? stopRecording() : startRecording()}
+                  className={`btn-control transition-all duration-300 ${isRecording && !isQueueRecording ? 'animate-pulse' : ''}`}
                   style={{
-                    background: isRecording
+                    background: isRecording && !isQueueRecording
                       ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'
                       : 'rgba(59, 130, 246, 0.2)',
                     color: '#fff',
-                    border: `1px solid ${isRecording ? 'rgba(255, 255, 255, 0.3)' : 'rgba(59, 130, 246, 0.5)'}`,
-                    boxShadow: isRecording ? '0 0 25px rgba(239, 68, 68, 0.5)' : 'none',
+                    border: `1px solid ${isRecording && !isQueueRecording ? 'rgba(255, 255, 255, 0.3)' : 'rgba(59, 130, 246, 0.5)'}`,
+                    boxShadow: isRecording && !isQueueRecording ? '0 0 25px rgba(239, 68, 68, 0.5)' : 'none',
                     borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
@@ -780,11 +979,11 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
                     gap: '10px',
                     whiteSpace: 'nowrap'
                   }}
-                  title={isRecording ? "Stop Recording" : "Start Recording"}
+                  title={isRecording && !isQueueRecording ? "Stop Recording" : "Start Recording"}
                 >
-                  {isRecording ? <StopCircle size={18} /> : <Video size={18} />}
+                  {isRecording && !isQueueRecording ? <StopCircle size={18} /> : <Video size={18} />}
                   <span style={{ fontSize: '0.75rem', fontWeight: '900', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
-                    {isRecording ? "STOP REC" : "REC VIDEO"}
+                    {isRecording && !isQueueRecording ? "STOP REC" : "REC VIDEO"}
                   </span>
                 </button>
               )}
