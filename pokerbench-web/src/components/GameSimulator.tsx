@@ -73,6 +73,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [showYouTubeControls, setShowYouTubeControls] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [openAIKey, setOpenAIKey] = useState('');
+  const [elevenLabsKey, setElevenLabsKey] = useState('');
   const [handQueueInput, setHandQueueInput] = useState('');
   const [handQueue, setHandQueue] = useState<number[]>([]);
   const [isQueueRecording, setIsQueueRecording] = useState(false);
@@ -81,14 +82,22 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
   // Load key from storage
   useEffect(() => {
-    const key = localStorage.getItem('openai_tts_key');
-    if (key) setOpenAIKey(key);
+    const oAIKey = localStorage.getItem('openai_tts_key');
+    if (oAIKey) setOpenAIKey(oAIKey);
+    const eLKey = localStorage.getItem('elevenlabs_tts_key');
+    if (eLKey) setElevenLabsKey(eLKey);
   }, []);
 
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setOpenAIKey(val);
     localStorage.setItem('openai_tts_key', val);
+  };
+
+  const handleElevenLabsKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setElevenLabsKey(val);
+    localStorage.setItem('elevenlabs_tts_key', val);
   };
 
   const videoRecorderRef = useRef<MediaRecorder | null>(null);
@@ -102,7 +111,8 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   // TTS Hook
   const { speak, cancel, isSpeaking, isActive: isTTSActive, isLoading: isTTSLoading, voiceName } = useTTS({
     enabled: isYouTubeMode,
-    openAIKey: openAIKey, // Pass key to hook
+    openAIKey: openAIKey,
+    elevenLabsKey: elevenLabsKey,
     onEnd: () => {
       // Resume playback logic handled in tick
     }
@@ -988,28 +998,38 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
                 </button>
               )}
 
-              {isYouTubeMode && !openAIKey && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <input
-                        type="password"
-                        placeholder="OpenAI Key (sk-...)"
-                        value={openAIKey}
-                        onChange={handleKeyChange}
-                        style={{
-                          background: 'rgba(0, 0, 0, 0.5)',
-                          border: '1px solid rgba(51, 65, 85, 1)',
-                          borderRadius: '4px',
-                          padding: '4px 8px',
-                          fontSize: '10px',
-                          color: 'white',
-                          width: '120px',
-                          transition: 'width 0.2s'
-                        }}
-                      />
-                    </div>
-                  </div>
+              {isYouTubeMode && (!openAIKey || !elevenLabsKey) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <input
+                    type="password"
+                    placeholder="ElevenLabs Key (xi-...)"
+                    value={elevenLabsKey}
+                    onChange={handleElevenLabsKeyChange}
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(51, 65, 85, 1)',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      color: 'white',
+                      width: '120px',
+                    }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="OpenAI Key (sk-...)"
+                    value={openAIKey}
+                    onChange={handleKeyChange}
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(51, 65, 85, 1)',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      color: 'white',
+                      width: '120px',
+                    }}
+                  />
                 </div>
               )}
             </div>

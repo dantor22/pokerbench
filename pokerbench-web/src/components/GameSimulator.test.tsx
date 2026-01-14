@@ -237,4 +237,40 @@ describe('GameSimulator', () => {
 
     document.body.removeChild(input);
   });
+
+  it('displays ElevenLabs key input in YouTube mode when keys are missing', async () => {
+    const { userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Activate YouTube mode via cheat code
+    await user.keyboard('yt mode');
+
+    // Click the toggle button to actually enable YouTube mode
+    const toggleBtn = screen.getByTitle('Toggle YouTube Generation Mode');
+    await user.click(toggleBtn);
+
+    expect(screen.getByPlaceholderText('ElevenLabs Key (xi-...)')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('OpenAI Key (sk-...)')).toBeInTheDocument();
+  });
+
+  it('persists ElevenLabs key to localStorage', async () => {
+    const { userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Activate YouTube mode
+    await user.keyboard('yt mode');
+
+    // Click the toggle button
+    const toggleBtn = screen.getByTitle('Toggle YouTube Generation Mode');
+    await user.click(toggleBtn);
+
+    const keyInput = screen.getByPlaceholderText('ElevenLabs Key (xi-...)');
+    await user.type(keyInput, 'xi-test-key');
+
+    expect(localStorage.getItem('elevenlabs_tts_key')).toBe('xi-test-key');
+  });
 });

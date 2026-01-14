@@ -3,12 +3,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 interface UseTTSOptions {
   enabled: boolean;
   openAIKey?: string;
+  elevenLabsKey?: string;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (error: any) => void;
 }
 
-export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOptions) {
+export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onError }: UseTTSOptions) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [voiceName, setVoiceName] = useState<string>('');
@@ -46,7 +47,7 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
     if (synthRef.current) {
       synthRef.current.cancel();
     }
-    // Cancel OpenAI Audio
+    // Cancel OpenAI/ElevenLabs Audio
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -67,7 +68,85 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
 
     cancel();
 
-    // 1. OpenAI TTS Strategy
+    // 1. ElevenLabs TTS Strategy (Priority)
+    if (elevenLabsKey) {
+      try {
+        setIsActive(true);
+        setIsLoading(true);
+
+        // Simple ElevenLabs voice ID or default
+        const voiceId = options?.voice || "nPczCjzI2devNBz1zWbc"; // Brian
+        setVoiceName(`ElevenLabs (${voiceId})`);
+
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+          method: "POST",
+          headers: {
+            "xi-api-key": elevenLabsKey,
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg"
+          },
+          body: JSON.stringify({
+            text: text,
+            model_id: "eleven_turbo_v2",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+              speed: 1.15
+            }
+          }),
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`ElevenLabs API Error: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+
+        audio.oncanplaythrough = () => {
+          if (controller.signal.aborted) return;
+          setIsLoading(false);
+          setIsSpeaking(true);
+          onStart?.();
+          audio.play();
+        };
+
+        audio.onended = () => {
+          setIsSpeaking(false);
+          setIsActive(false);
+          onEnd?.();
+          URL.revokeObjectURL(url);
+        };
+
+        audio.onerror = (e) => {
+          console.error("ElevenLabs Playback Error", e);
+          setIsSpeaking(false);
+          setIsActive(false);
+          setIsLoading(false);
+          onError?.(e);
+          onEnd?.();
+        };
+
+        return; // Success or still working
+
+      } catch (e: any) {
+        if (e.name === 'AbortError') {
+          // Ignore
+        } else {
+          console.error("ElevenLabs TTS Failed, falling back:", e);
+        }
+      }
+
+      // Fall through to OpenAI logic if we have a key, otherwise Native logic below
+    }
+
+    // 2. OpenAI TTS Strategy
     if (openAIKey) {
       try {
         setIsActive(true); // Pause game immediately
@@ -130,6 +209,8 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
           onEnd?.();
         };
 
+        return;
+
       } catch (e: any) {
         if (e.name === 'AbortError') {
           // Ignore aborts
@@ -145,7 +226,8 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
       return;
     }
 
-    // 2. Native TTS Strategy (Fallback)
+    // 3. Native TTS Strategy (Fallback)
+    // 3. Native TTS Strategy (Fallback)
     if (!synthRef.current) return;
 
     try {
@@ -206,7 +288,7 @@ export function useTTS({ enabled, openAIKey, onStart, onEnd, onError }: UseTTSOp
       onError?.(e);
       onEnd?.();
     }
-  }, [enabled, openAIKey, cancel, onStart, onEnd, onError]);
+  }, [enabled, openAIKey, elevenLabsKey, cancel, onStart, onEnd, onError]);
 
   return {
     speak,

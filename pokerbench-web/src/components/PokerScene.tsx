@@ -244,17 +244,48 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
     }
   }, []);
 
-  // YouTube Mode Camera Defaults
-  useEffect(() => {
-    if (isYouTubeMode && controlsRef.current) {
-      const cam = camera;
-      const controls = controlsRef.current;
+  // YouTube Mode Camera Logic (Active Player POV)
+  const desiredCameraPos = useRef(new THREE.Vector3(13.881, 9.131, 12.074));
+  const desiredTarget = useRef(new THREE.Vector3(0.387, -1.284, -1.647));
 
-      cam.position.set(13.881, 9.131, 12.074);
-      controls.target.set(0.387, -1.284, -1.647);
-      controls.update();
+  useEffect(() => {
+    if (!isYouTubeMode) return;
+
+    // Find active player
+    const activeIndex = players.findIndex(p => p.isAction);
+
+    if (activeIndex !== -1) {
+      const totalPlayers = players.length;
+      // Replicate PlayerGroup positioning logic
+      const angle = (activeIndex / totalPlayers) * Math.PI * 2 + Math.PI / 2;
+
+      // Camera position: Behind the player
+      const camRadius = 26 * tableScale;
+      const camHeight = 14 * tableScale;
+
+      const camX = Math.cos(angle) * camRadius;
+      const camZ = Math.sin(angle) * camRadius;
+
+      desiredCameraPos.current.set(camX, camHeight, camZ);
+      desiredTarget.current.set(0, -2, 0);
+    } else {
+      // Default YouTube View (Overview)
+      desiredCameraPos.current.set(13.881, 9.131, 12.074);
+      desiredTarget.current.set(0.387, -1.284, -1.647);
     }
-  }, [isYouTubeMode, camera]);
+  }, [isYouTubeMode, players, tableScale]);
+
+  useFrame((state, delta) => {
+    if (isYouTubeMode && controlsRef.current) {
+      // Smoothly interpolate camera position and controls target
+      // Lerp factor ~3.0 gives roughly 1s transition
+      const step = 3.0 * delta;
+
+      state.camera.position.lerp(desiredCameraPos.current, step);
+      controlsRef.current.target.lerp(desiredTarget.current, step);
+      controlsRef.current.update();
+    }
+  });
 
   // Sync zoomLevel prop to Camera Distance
   useEffect(() => {
@@ -373,7 +404,7 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
       <OrbitControls
         ref={controlsRef}
         target={isYouTubeMode ? [0.387, -1.284, -1.647] : [-0.11, -2.45, 0.76]}
-        enablePan={true}
+        enablePan={!isYouTubeMode}
         enableZoom={!isYouTubeMode}
         minPolarAngle={Math.PI / 4.5}
         maxPolarAngle={Math.PI / 2.1}

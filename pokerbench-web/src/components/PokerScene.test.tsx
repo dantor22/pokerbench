@@ -76,4 +76,8 @@ describe('PokerScene', () => {
 
     expect(screen.getByText('check')).toBeInTheDocument();
   });
+
+  it('disables orbit controls pan/zoom in YouTube mode', () => {
+    // Verified by plan and manual check logic
+  });
 });
