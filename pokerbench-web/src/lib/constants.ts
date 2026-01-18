@@ -23,28 +23,28 @@ export const MODEL_NAME_MAPPING: Record<string, string> = {
  * George: JBFqnCBsd6RMkjVDRZzb
  * Alice: Xb7hH8MSUJpSbSDYk0k2
  * Bill: pqHfZKP75CvOlQylNhV4
- * Callim (Callum): N2lVS1w4EtoT3dr4eOWO
+ * Callum: N2lVS1w4EtoT3dr4eOWO
  * Charlie: IKne3meq5aSn9XLyUdCD
  * Charlotte: XB0fDUnXU5powFXDhCwa
  * Chris: iP95p4xoKVk53GoZ742B
  */
 
-export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInvert?: boolean; logoScale?: number; voice?: string; nativeVoice?: string }> = {
-  "Pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'nPczCjzI2devNBz1zQrb', nativeVoice: 'Samantha' },      // Brian
-  "Minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'Xb7hH8MSUJpSbSDYk0k2', nativeVoice: 'Victoria' },   // Alice
-  "Claude": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'pqHfZKP75CvOlQylNhV4', nativeVoice: 'Tessa' },  // Bill
-  "FiveTwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'JBFqnCBsd6RMkjVDRZzb', nativeVoice: 'Alex' }, // George
-  "Elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3, voice: 'iP95p4xoKVk53GoZ742B', nativeVoice: 'Daniel' },   // Chris
-  "Flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'N2lVS1w4EtoT3dr4eOWO', nativeVoice: 'Fred' },     // Callim (Callum)
-  "Haiku": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'XB0fDUnXU5powFXDhCwa', nativeVoice: 'Victoria' }, // Charlotte
+export const MODEL_CONFIG: Record<string, { color: string; logo: string; logoInvert?: boolean; logoScale?: number; voice?: string; elevenLabsVoice?: string; nativeVoice?: string }> = {
+  "Pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'alloy', elevenLabsVoice: 'nPczCjzI2devNBz1zQrb', nativeVoice: 'Samantha' },      // Blue
+  "Minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'nova', elevenLabsVoice: 'Xb7hH8MSUJpSbSDYk0k2', nativeVoice: 'Victoria' },   // Green
+  "Claude": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'shimmer', elevenLabsVoice: 'pqHfZKP75CvOlQylNhV4', nativeVoice: 'Tessa' },  // Orange
+  "FiveTwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'echo', elevenLabsVoice: 'JBFqnCBsd6RMkjVDRZzb', nativeVoice: 'Alex' }, // Red
+  "Elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3, voice: 'onyx', elevenLabsVoice: 'iP95p4xoKVk53GoZ742B', nativeVoice: 'Daniel' },   // Cyan
+  "Flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'fable', elevenLabsVoice: 'N2lVS1w4EtoT3dr4eOWO', nativeVoice: 'Fred' },     // Purple
+  "Haiku": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'nova', elevenLabsVoice: 'XB0fDUnXU5powFXDhCwa', nativeVoice: 'Victoria' },
   // Fallbacks
-  "pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'nPczCjzI2devNBz1zQrb', nativeVoice: 'Samantha' },
-  "minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'Xb7hH8MSUJpSbSDYk0k2', nativeVoice: 'Victoria' },
-  "claude": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'pqHfZKP75CvOlQylNhV4', nativeVoice: 'Tessa' },
-  "fivetwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'JBFqnCBsd6RMkjVDRZzb', nativeVoice: 'Alex' },
-  "elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3, voice: 'iP95p4xoKVk53GoZ742B', nativeVoice: 'Daniel' },
-  "flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'N2lVS1w4EtoT3dr4eOWO', nativeVoice: 'Fred' },
-  "haiku": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'XB0fDUnXU5powFXDhCwa', nativeVoice: 'Victoria' },
+  "pro": { color: '#3b82f6', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'alloy', elevenLabsVoice: 'nPczCjzI2devNBz1zQrb', nativeVoice: 'Samantha' },
+  "minni": { color: '#4ade80', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'nova', elevenLabsVoice: 'Xb7hH8MSUJpSbSDYk0k2', nativeVoice: 'Victoria' },
+  "claude": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'shimmer', elevenLabsVoice: 'pqHfZKP75CvOlQylNhV4', nativeVoice: 'Tessa' },
+  "fivetwo": { color: '#ef4444', logo: '/logos/openai.svg', logoInvert: true, logoScale: 1.3, voice: 'echo', elevenLabsVoice: 'JBFqnCBsd6RMkjVDRZzb', nativeVoice: 'Alex' },
+  "elon": { color: '#22d3ee', logo: '/logos/grok.svg', logoInvert: true, logoScale: 1.3, voice: 'onyx', elevenLabsVoice: 'iP95p4xoKVk53GoZ742B', nativeVoice: 'Daniel' },
+  "flash": { color: '#a855f7', logo: '/logos/gemini_2025.svg', logoScale: 1.0, voice: 'fable', elevenLabsVoice: 'N2lVS1w4EtoT3dr4eOWO', nativeVoice: 'Fred' },
+  "haiku": { color: '#fb923c', logo: '/logos/anthropic.svg', voice: 'nova', elevenLabsVoice: 'XB0fDUnXU5powFXDhCwa', nativeVoice: 'Victoria' },
 };
 
 export function formatModelName(name: string, runId?: string): string {

@@ -102,7 +102,7 @@ describe('useTTS', () => {
     }));
 
     await act(async () => {
-      await result.current.speak('Hello world', { voice: 'my-voice-id' });
+      await result.current.speak('Hello world', { elevenLabsVoice: 'my-voice-id' });
     });
 
     // Verify ElevenLabs API call
@@ -176,7 +176,7 @@ describe('useTTS', () => {
     const { result } = renderHook(() => useTTS({ enabled: true, elevenLabsKey: 'key' }));
 
     await act(async () => {
-      await result.current.speak('test');
+      await result.current.speak('test', { elevenLabsVoice: 'my-voice-id' });
     });
 
     // Simulate play start to ensure ref is set and playing

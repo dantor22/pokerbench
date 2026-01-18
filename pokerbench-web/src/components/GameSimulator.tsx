@@ -292,6 +292,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
       speak(transformedThought, {
         voice: modelConfig.voice,
+        elevenLabsVoice: modelConfig.elevenLabsVoice,
         nativeVoice: modelConfig.nativeVoice
       });
     }

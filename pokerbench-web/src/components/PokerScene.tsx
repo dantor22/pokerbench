@@ -245,8 +245,21 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
   }, []);
 
   // YouTube Mode Camera Logic (Active Player POV)
-  const desiredCameraPos = useRef(new THREE.Vector3(13.881, 9.131, 12.074));
-  const desiredTarget = useRef(new THREE.Vector3(0.387, -1.284, -1.647));
+  const OVERHEAD_TARGET = new THREE.Vector3(0, -1.8, 3 * tableScale);
+  const desiredCameraPos = useRef(new THREE.Vector3(0, 30, 3 * tableScale));
+  const desiredTarget = useRef(OVERHEAD_TARGET.clone());
+
+  // Manual Pan tracking for YouTube Mode
+  const panOffset = useRef(new THREE.Vector3(0, 0, 0));
+  const isInteracting = useRef(false);
+  const lastTarget = useRef(new THREE.Vector3(0, 0, 0));
+
+  // Reset pan offset when entering YT mode or starting a new hand (if desired)
+  useEffect(() => {
+    if (isYouTubeMode) {
+      panOffset.current.set(0, 0, 0);
+    }
+  }, [isYouTubeMode]);
 
   useEffect(() => {
     if (!isYouTubeMode) return;
@@ -269,20 +282,27 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
       desiredCameraPos.current.set(camX, camHeight, camZ);
       desiredTarget.current.set(0, -2, 0);
     } else {
-      // Default YouTube View (Overview)
-      desiredCameraPos.current.set(13.881, 9.131, 12.074);
-      desiredTarget.current.set(0.387, -1.284, -1.647);
+      // Default YouTube View (Board Overhead)
+      desiredCameraPos.current.set(0, 30 * tableScale, 3 * tableScale);
+      desiredTarget.current.set(0, -1.8, 3 * tableScale);
     }
   }, [isYouTubeMode, players, tableScale]);
 
   useFrame((state, delta) => {
     if (isYouTubeMode && controlsRef.current) {
+      // Don't fight the user if they are currently panning
+      if (isInteracting.current) return;
+
       // Smoothly interpolate camera position and controls target
       // Lerp factor ~3.0 gives roughly 1s transition
       const step = 3.0 * delta;
 
-      state.camera.position.lerp(desiredCameraPos.current, step);
-      controlsRef.current.target.lerp(desiredTarget.current, step);
+      // Apply any manual pan offset to the cinematic positions
+      const finalCameraPos = desiredCameraPos.current.clone().add(panOffset.current);
+      const finalTarget = desiredTarget.current.clone().add(panOffset.current);
+
+      state.camera.position.lerp(finalCameraPos, step);
+      controlsRef.current.target.lerp(finalTarget, step);
       controlsRef.current.update();
     }
   });
@@ -307,6 +327,14 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
 
   // Handle OrbitControls changes (User Interaction)
   const handleControlsChange = (e: any) => {
+    if (isYouTubeMode && isInteracting.current && controlsRef.current) {
+      // Calculate delta pan
+      const currentTarget = controlsRef.current.target;
+      const delta = new THREE.Vector3().subVectors(currentTarget, lastTarget.current);
+      panOffset.current.add(delta);
+      lastTarget.current.copy(currentTarget);
+    }
+
     if (onZoomChange) {
       const dist = e.target.getDistance();
       // Avoid division by zero, though unlikely with minDistance
@@ -403,14 +431,23 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
 
       <OrbitControls
         ref={controlsRef}
-        target={isYouTubeMode ? [0.387, -1.284, -1.647] : [-0.11, -2.45, 0.76]}
-        enablePan={!isYouTubeMode}
+        target={isYouTubeMode ? [0, -1.8, 3 * tableScale] : [-0.11, -2.45, 0.76]}
+        enablePan={true}
         enableZoom={!isYouTubeMode}
-        minPolarAngle={Math.PI / 4.5}
+        minPolarAngle={0}
         maxPolarAngle={Math.PI / 2.1}
         minDistance={10}
         maxDistance={40}
         onChange={handleControlsChange}
+        onStart={() => {
+          isInteracting.current = true;
+          if (controlsRef.current) {
+            lastTarget.current.copy(controlsRef.current.target);
+          }
+        }}
+        onEnd={() => {
+          isInteracting.current = false;
+        }}
       />
 
 

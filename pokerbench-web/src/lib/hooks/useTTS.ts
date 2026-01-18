@@ -63,19 +63,19 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
     setIsLoading(false);
   }, []);
 
-  const speak = useCallback(async (text: string, options?: { voice?: string, nativeVoice?: string }) => {
+  const speak = useCallback(async (text: string, options?: { voice?: string, elevenLabsVoice?: string, nativeVoice?: string }) => {
     if (!enabled || !text) return;
 
     cancel();
 
     // 1. ElevenLabs TTS Strategy (Priority)
-    if (elevenLabsKey) {
+    if (elevenLabsKey && options?.elevenLabsVoice) {
       try {
         setIsActive(true);
         setIsLoading(true);
 
         // Simple ElevenLabs voice ID or default
-        const voiceId = options?.voice || "nPczCjzI2devNBz1zWbc"; // Brian
+        const voiceId = options.elevenLabsVoice;
         setVoiceName(`ElevenLabs (${voiceId})`);
 
         const controller = new AbortController();
@@ -84,7 +84,7 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
         const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
           method: "POST",
           headers: {
-            "xi-api-key": elevenLabsKey,
+            "xi-api-key": elevenLabsKey.trim(),
             "Content-Type": "application/json",
             "Accept": "audio/mpeg"
           },
@@ -160,7 +160,7 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
         const response = await fetch("https://api.openai.com/v1/audio/speech", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${openAIKey}`,
+            "Authorization": `Bearer ${openAIKey.trim()}`,
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
