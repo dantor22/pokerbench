@@ -192,4 +192,32 @@ describe('useTTS', () => {
     expect(mockCancel).toHaveBeenCalled();
     expect(mockAudioPause).toHaveBeenCalled();
   });
+
+  it('automatically cancels playback when disabled via props', async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      blob: () => Promise.resolve(new Blob(['audio'])),
+    });
+
+    const { result, rerender } = renderHook(({ enabled }) => useTTS({ enabled, elevenLabsKey: 'key' }), {
+      initialProps: { enabled: true }
+    });
+
+    await act(async () => {
+      await result.current.speak('test', { elevenLabsVoice: 'my-voice-id' });
+    });
+
+    act(() => {
+      if (mockAudioEvents['canplaythrough']) mockAudioEvents['canplaythrough']();
+    });
+
+    expect(result.current.isSpeaking).toBe(true);
+
+    // Disable the hook
+    rerender({ enabled: false });
+
+    expect(mockCancel).toHaveBeenCalled();
+    expect(mockAudioPause).toHaveBeenCalled();
+    expect(result.current.isSpeaking).toBe(false);
+  });
 });

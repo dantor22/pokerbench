@@ -20,6 +20,31 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const cancel = useCallback(() => {
+    // Cancel Native TTS
+    if (synthRef.current) {
+      synthRef.current.cancel();
+    }
+    // Cancel OpenAI/ElevenLabs Audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.oncanplaythrough = null;
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    // Cancel In-Flight Requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    setIsSpeaking(false);
+    setIsActive(false);
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       synthRef.current = window.speechSynthesis;
@@ -40,28 +65,14 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
     return () => {
       cancel();
     };
-  }, []);
+  }, [cancel]);
 
-  const cancel = useCallback(() => {
-    // Cancel Native TTS
-    if (synthRef.current) {
-      synthRef.current.cancel();
+  // Stop everything if disabled
+  useEffect(() => {
+    if (!enabled) {
+      cancel();
     }
-    // Cancel OpenAI/ElevenLabs Audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    // Cancel In-Flight Requests
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-
-    setIsSpeaking(false);
-    setIsActive(false);
-    setIsLoading(false);
-  }, []);
+  }, [enabled, cancel]);
 
   const speak = useCallback(async (text: string, options?: { voice?: string, elevenLabsVoice?: string, nativeVoice?: string }) => {
     if (!enabled || !text) return;
@@ -105,12 +116,17 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
         }
 
         const blob = await response.blob();
+        if (controller.signal.aborted) return;
+
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audioRef.current = audio;
 
         audio.oncanplaythrough = () => {
-          if (controller.signal.aborted) return;
+          if (controller.signal.aborted) {
+            audio.pause();
+            return;
+          }
           setIsLoading(false);
           setIsSpeaking(true);
           onStart?.();
@@ -178,13 +194,18 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
         }
 
         const blob = await response.blob();
+        if (controller.signal.aborted) return;
+
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audioRef.current = audio;
 
         audio.oncanplaythrough = () => {
           // If we were aborted during loading audio, don't play
-          if (controller.signal.aborted) return;
+          if (controller.signal.aborted) {
+            audio.pause();
+            return;
+          }
 
           setIsLoading(false); // Done buffering
           setIsSpeaking(true); // Start Speaking

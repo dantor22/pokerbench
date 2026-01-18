@@ -504,11 +504,24 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     return () => clearInterval(interval);
   }, [isPlaying, playbackSpeed, isYouTubeMode, isTTSActive, isTTSLoading]); 
 
+  // Audio management
+  const stopAllAudio = () => {
+    cancel(); // Stop TTS
+
+    // Stop all SFX
+    [shufflingCardsAudioRef, pokerChipsAudioRef, allInAudioRef, chaChingAudioRef].forEach(ref => {
+      if (ref.current) {
+        ref.current.pause();
+        ref.current.currentTime = 0;
+      }
+    });
+  };
+
   const handleNextHand = () => {
     if (currentHandIndex < game.hands.length - 1) {
       setCurrentHandIndex(prev => prev + 1);
       setCurrentStepIndex(0);
-      cancel(); // Stop speaking on manual nav
+      stopAllAudio(); // Stop speaking and SFX on manual nav
     }
   };
 
@@ -516,13 +529,13 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     if (currentHandIndex > 0) {
       setCurrentHandIndex(prev => prev - 1);
       setCurrentStepIndex(0);
-      cancel();
+      stopAllAudio();
     }
   };
 
   const handleStepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCurrentStepIndex(Number(e.target.value));
-    cancel();
+    stopAllAudio();
   };
 
   // Recording Logic
@@ -758,11 +771,12 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
                 onClick={() => {
                   if (currentStepIndex > 0) {
                     setCurrentStepIndex(currentStepIndex - 1);
-                    cancel();
+                    stopAllAudio();
                   } else if (currentHandIndex > 0) {
                     const prevHand = game.hands[currentHandIndex - 1];
                     setCurrentHandIndex(currentHandIndex - 1);
                     setCurrentStepIndex(prevHand.actions.length - 1);
+                    stopAllAudio();
                   }
                 }}
                 className="btn-control"
@@ -787,7 +801,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
                 onClick={() => {
                   if (currentStepIndex < steps.length - 1) {
                     setCurrentStepIndex(currentStepIndex + 1);
-                    cancel();
+                    stopAllAudio();
                   } else {
                     handleNextHand();
                   }
@@ -1070,7 +1084,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
             setCurrentHandIndex(index);
             setCurrentStepIndex(0);
             setIsPlaying(false);
-            cancel();
+            stopAllAudio();
           }}
         />
         <StackSizeChart game={game} currentHandIndex={currentHandIndex} runId={runId} />

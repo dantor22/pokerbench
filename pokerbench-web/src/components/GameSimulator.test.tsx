@@ -273,4 +273,60 @@ describe('GameSimulator', () => {
 
     expect(localStorage.getItem('elevenlabs_tts_key')).toBe('xi-test-key');
   });
+
+  it('cancels TTS when navigating between hands or steps', async () => {
+    const multiHandGame = {
+      players: ['Pro', 'Claude'],
+      hands: [
+        {
+          hand_number: 1,
+          dealer: 'Pro',
+          pre_hand_stacks: { Pro: 10000, Claude: 10000 },
+          hole_cards: { Pro: ['Ah', 'Ad'], Claude: ['Ks', 'Kd'] },
+          actions: [{ type: 'player_action', player: 'Pro', action: 'bet', chips_added: 100 }],
+          results: []
+        },
+        {
+          hand_number: 2,
+          dealer: 'Claude',
+          pre_hand_stacks: { Pro: 9900, Claude: 10100 },
+          hole_cards: { Pro: ['Qh', 'Qd'], Claude: ['Js', 'Jd'] },
+          actions: [{ type: 'player_action', player: 'Claude', action: 'bet', chips_added: 100 }],
+          results: []
+        }
+      ]
+    };
+
+    const { userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    render(<GameSimulator game={multiHandGame as any} />);
+
+    const nextHandBtn = screen.getByTitle('Next Hand');
+    const prevHandBtn = screen.getByTitle('Previous Hand');
+    const nextStepBtn = screen.getByTitle('Next Step');
+    const prevStepBtn = screen.getByTitle('Previous Step');
+
+    // Test Next Hand
+    await user.click(nextHandBtn);
+    expect(window.speechSynthesis.cancel).toHaveBeenCalled();
+    vi.clearAllMocks();
+
+    // Test Previous Hand
+    await user.click(prevHandBtn);
+    expect(window.speechSynthesis.cancel).toHaveBeenCalled();
+    vi.clearAllMocks();
+
+    // Test Next Step (at end of hand)
+    await user.click(nextStepBtn); // Step 0 -> 1 (or 0 -> next hand if only 1 action)
+    expect(window.speechSynthesis.cancel).toHaveBeenCalled();
+    vi.clearAllMocks();
+
+    // Test Previous Step (at start of hand)
+    // First move to Hand 2
+    await user.click(nextHandBtn);
+    vi.clearAllMocks();
+    await user.click(prevStepBtn);
+    expect(window.speechSynthesis.cancel).toHaveBeenCalled();
+  });
 });
