@@ -1,7 +1,7 @@
 'use client';
 
 import { Html, OrbitControls, Billboard } from '@react-three/drei';
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, memo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import Table from './poker/Table';
@@ -37,9 +37,10 @@ interface PokerSceneProps {
   isYouTubeMode?: boolean;
 }
 
-const PlayerGroup = ({ data, index, totalPlayers, tableScale, isYouTubeMode }: { data: PlayerState; index: number; totalPlayers: number; tableScale: number; isYouTubeMode?: boolean }) => {
+const PlayerGroup = memo(({ data, index, totalPlayers, tableScale, isYouTubeMode }: { data: PlayerState; index: number; totalPlayers: number; tableScale: number; isYouTubeMode?: boolean }) => {
   const badgeRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
+  const vec = useMemo(() => new THREE.Vector3(), []); // Reusable vector
 
   // Table radius is ~11. Players sit at ~14.
   const radius = 14 * tableScale;
@@ -53,7 +54,8 @@ const PlayerGroup = ({ data, index, totalPlayers, tableScale, isYouTubeMode }: {
   // Adaptive scaling logic
   useFrame(() => {
     if (badgeRef.current) {
-      const dist = camera.position.distanceTo(badgeRef.current.getWorldPosition(new THREE.Vector3()));
+      badgeRef.current.getWorldPosition(vec);
+      const dist = camera.position.distanceTo(vec);
       // Non-linear scale: stays readable far away, doesn't get too huge up close
       // A linear scale (dist/15) keeps it constant size on screen. 
       // We'll use a slightly slower growth so it still feels 3D.
@@ -206,7 +208,32 @@ const PlayerGroup = ({ data, index, totalPlayers, tableScale, isYouTubeMode }: {
       </Billboard>
     </group>
   );
-};
+}, (prev, next) => {
+  // Custom comparison to prevent re-renders of PlayerGroup
+  if (prev.index !== next.index) return false;
+  if (prev.totalPlayers !== next.totalPlayers) return false;
+  if (prev.tableScale !== next.tableScale) return false;
+  if (prev.isYouTubeMode !== next.isYouTubeMode) return false;
+
+  // Deep compare data
+  const p = prev.data;
+  const n = next.data;
+  return (
+    p.name === n.name &&
+    p.displayName === n.displayName &&
+    p.stack === n.stack &&
+    p.bet === n.bet &&
+    p.cards.length === n.cards.length && p.cards[0] === n.cards[0] && p.cards[1] === n.cards[1] &&
+    p.isActive === n.isActive &&
+    p.isFolded === n.isFolded &&
+    p.isDealer === n.isDealer &&
+    p.isAction === n.isAction &&
+    p.currentAction === n.currentAction &&
+    p.netGain === n.netGain &&
+    p.winProbability === n.winProbability &&
+    p.isCalculating === n.isCalculating
+  );
+});
 
 export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange, onSceneReady, isYouTubeMode }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void; onSceneReady?: () => void }) {
   const potBadgeRef = useRef<THREE.Group>(null);
