@@ -310,7 +310,10 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
       desiredTarget.current.set(0, -2, 0);
     } else {
       // Default YouTube View (Board Overhead)
-      desiredCameraPos.current.set(0, 30 * tableScale, 3 * tableScale);
+      // Use a significant Z-offset to force OrbitControls to start the azimuthal rotation
+      // earlier in the transition flight, preventing a "late snap" twist.
+      // Zoomed in closer (height reduced from 40 to 25)
+      desiredCameraPos.current.set(0, 25 * tableScale, 3 * tableScale + 5 * tableScale);
       desiredTarget.current.set(0, -1.8, 3 * tableScale);
     }
   }, [isYouTubeMode, players, tableScale]);

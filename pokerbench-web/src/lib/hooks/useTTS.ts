@@ -20,6 +20,7 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const cancel = useCallback(() => {
     // Cancel Native TTS
@@ -39,6 +40,12 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
+    }
+
+    // Cancel Pending Native TTS
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
 
     setIsSpeaking(false);
@@ -263,58 +270,65 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
     if (!synthRef.current) return;
 
     try {
-      // Native is instant, no loading
-      setIsSpeaking(true);
-      setIsActive(true);
+      // Small delay to allow previous cancellations to settle and prevent race conditions
+      // where multiple utterances start simultaneously (especially during rapid skipping)
+      timeoutRef.current = setTimeout(() => {
+        if (!synthRef.current) return;
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utteranceRef.current = utterance;
+        // Native is instant, no loading
+        setIsSpeaking(true);
+        setIsActive(true);
 
-      const voices = synthRef.current.getVoices();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utteranceRef.current = utterance;
 
-      let preferredVoice = null;
-      if (options?.nativeVoice) {
-        preferredVoice = voices.find(v => v.name.includes(options.nativeVoice as string));
-      }
+        const voices = synthRef.current.getVoices();
 
-      if (!preferredVoice) {
-        preferredVoice = voices.find(v => v.name.includes('Google US English'));
-      }
-      if (!preferredVoice) preferredVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'));
-      if (!preferredVoice) preferredVoice = voices.find(v => v.lang === 'en-US');
-      if (!preferredVoice) preferredVoice = voices[0];
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-        setVoiceName(preferredVoice.name);
-      } else {
-        setVoiceName("Default System Voice (May not record)");
-      }
-
-      utterance.rate = 1.25;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-
-      utterance.onstart = () => {
-        onStart?.();
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        setIsActive(false);
-        onEnd?.();
-      };
-
-      utterance.onerror = (e) => {
-        console.error('TTS Error:', e);
-        setIsSpeaking(false);
-        setIsActive(false);
-        if (e.error !== 'canceled' && e.error !== 'interrupted') {
-          onEnd?.();
+        let preferredVoice = null;
+        if (options?.nativeVoice) {
+          preferredVoice = voices.find(v => v.name.includes(options.nativeVoice as string));
         }
-      };
 
-      synthRef.current.speak(utterance);
+        if (!preferredVoice) {
+          preferredVoice = voices.find(v => v.name.includes('Google US English'));
+        }
+        if (!preferredVoice) preferredVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'));
+        if (!preferredVoice) preferredVoice = voices.find(v => v.lang === 'en-US');
+        if (!preferredVoice) preferredVoice = voices[0];
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+          setVoiceName(preferredVoice.name);
+        } else {
+          setVoiceName("Default System Voice (May not record)");
+        }
+
+        utterance.rate = 1.25;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        utterance.onstart = () => {
+          onStart?.();
+        };
+
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          setIsActive(false);
+          onEnd?.();
+        };
+
+        utterance.onerror = (e) => {
+          console.error('TTS Error:', e);
+          setIsSpeaking(false);
+          setIsActive(false);
+          if (e.error !== 'canceled' && e.error !== 'interrupted') {
+            onEnd?.();
+          }
+        };
+
+        synthRef.current.speak(utterance);
+      }, 50);
+
     } catch (e) {
       console.error('TTS Exception:', e);
       onError?.(e);

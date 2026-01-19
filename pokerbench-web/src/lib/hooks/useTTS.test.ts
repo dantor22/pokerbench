@@ -132,6 +132,7 @@ describe('useTTS', () => {
   });
 
   it('falls back to Native TTS when no keys provided', async () => {
+    vi.useFakeTimers();
     const onStart = vi.fn();
     const onEnd = vi.fn();
 
@@ -145,6 +146,11 @@ describe('useTTS', () => {
       // @ts-ignore
       window.speechSynthesis.getVoices.mockReturnValue([{ name: 'Google US English', lang: 'en-US' }]);
       result.current.speak('Hello native');
+    });
+
+    // Advance timer to trigger the delayed TTS
+    act(() => {
+      vi.advanceTimersByTime(100);
     });
 
     // Wait for async if any (native is synchronous in this hook implementation but good to wait)
@@ -164,6 +170,8 @@ describe('useTTS', () => {
     });
     expect(result.current.isSpeaking).toBe(false);
     expect(onEnd).toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 
   it('cancels playback when requested', async () => {
@@ -219,5 +227,32 @@ describe('useTTS', () => {
     expect(mockCancel).toHaveBeenCalled();
     expect(mockAudioPause).toHaveBeenCalled();
     expect(result.current.isSpeaking).toBe(false);
+  });
+  it('handles rapid speak calls by cancelling previous pending native speech', async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useTTS({ enabled: true }));
+
+    // First call
+    act(() => {
+      // @ts-ignore
+      window.speechSynthesis.getVoices.mockReturnValue([{ name: 'Google US English', lang: 'en-US' }]);
+      result.current.speak('First');
+    });
+
+    // Immediate second call (should cancel first before it starts)
+    act(() => {
+      result.current.speak('Second');
+    });
+
+    // Fast forward past the timeout
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(mockSpeak).toHaveBeenCalledTimes(1);
+    const utterance = mockSpeak.mock.calls[0][0];
+    expect(utterance.text).toBe('Second');
+
+    vi.useRealTimers();
   });
 });
