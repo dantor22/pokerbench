@@ -489,6 +489,17 @@ h6 {
   left: 1rem;
 }
 
+.bottom-8 {
+  bottom: 2rem;
+}
+
+.right-8 {
+  right: 2rem;
+}
+
+.text-right {
+  text-align: right;
+}
 .z-10 {
   z-index: 10;
 }

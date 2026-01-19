@@ -811,7 +811,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         className={`card text-white relative overflow-hidden p-0 bg-black mb-0 poker-scene-container transition-all duration-300 mx-auto ${isYouTubeMode ? 'aspect-video w-full max-w-[3840px] border-4 border-slate-900 shadow-2xl relative' : ''
           }`}
       >
-        <div className={`absolute top-4 left-4 z-10 select-none transition-opacity ${isRecording ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
+        <div className={`absolute ${isYouTubeMode ? 'bottom-8 right-8 text-right' : 'top-4 left-4'} z-10 select-none transition-opacity ${isRecording ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
           {/* Background Music Audio Element */}
           <audio ref={audioRef} src="/on_the_flip.mp3" loop preload="auto" />
 
