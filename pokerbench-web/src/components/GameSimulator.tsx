@@ -77,6 +77,8 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [handQueueInput, setHandQueueInput] = useState('');
   const [handQueue, setHandQueue] = useState<number[]>([]);
   const [isQueueRecording, setIsQueueRecording] = useState(false);
+  const [disableTTSNormalization, setDisableTTSNormalization] = useState(false);
+  const [ttsProvider, setTtsProvider] = useState<'openai' | 'elevenlabs' | 'native'>('elevenlabs');
 
   const keyHistory = useRef('');
 
@@ -86,6 +88,10 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     if (oAIKey) setOpenAIKey(oAIKey);
     const eLKey = localStorage.getItem('elevenlabs_tts_key');
     if (eLKey) setElevenLabsKey(eLKey);
+    const disableNorm = localStorage.getItem('disable_tts_normalization') === 'true';
+    setDisableTTSNormalization(disableNorm);
+    const provider = localStorage.getItem('tts_provider') as 'openai' | 'elevenlabs' | 'native';
+    if (provider) setTtsProvider(provider);
   }, []);
 
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,8 +106,15 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     localStorage.setItem('elevenlabs_tts_key', val);
   };
 
+  const handleToggleNormalization = () => {
+    const newVal = !disableTTSNormalization;
+    setDisableTTSNormalization(newVal);
+    localStorage.setItem('disable_tts_normalization', String(newVal));
+  };
+
   const videoRecorderRef = useRef<MediaRecorder | null>(null);
   const lastSpokenStepRef = useRef<string | null>(null); // Track last spoken "handId-stepIndex"
+  const shuffleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentHand = game.hands[currentHandIndex];
   const steps = useMemo(() => {
@@ -113,6 +126,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     enabled: isYouTubeMode,
     openAIKey: openAIKey,
     elevenLabsKey: elevenLabsKey,
+    provider: ttsProvider,
     onEnd: () => {
       // Resume playback logic handled in tick
     }
@@ -288,7 +302,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       lastSpokenStepRef.current = stepKey;
       const modelConfig = MODEL_CONFIG[activePlayer.name as keyof typeof MODEL_CONFIG] || {};
 
-      const transformedThought = transformPokerThoughts(activePlayer.thought);
+      const transformedThought = disableTTSNormalization ? activePlayer.thought : transformPokerThoughts(activePlayer.thought);
 
       speak(transformedThought, {
         voice: modelConfig.voice,
@@ -320,9 +334,20 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     // 1. Shuffling: Start of hand
     if (currentStepIndex === 0) {
       if (shufflingCardsAudioRef.current) {
+        if (shuffleTimeoutRef.current) {
+          clearTimeout(shuffleTimeoutRef.current);
+        }
         shufflingCardsAudioRef.current.volume = 0.4;
         shufflingCardsAudioRef.current.currentTime = 0;
         shufflingCardsAudioRef.current.play().catch(() => { });
+
+        // Limit shuffle to 4 seconds
+        shuffleTimeoutRef.current = setTimeout(() => {
+          if (shufflingCardsAudioRef.current) {
+            shufflingCardsAudioRef.current.pause();
+            shufflingCardsAudioRef.current.currentTime = 0;
+          }
+        }, 4000);
       }
     }
 
@@ -355,6 +380,11 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         chaChingAudioRef.current.play().catch(() => { });
       }
     }
+
+    return () => {
+      // Do not clear shuffle timeout on unmount/update so it can finish its job (stop shuffling)
+      // unless we explicitly start a new one (handled in the play block)
+    };
   }, [currentStepIndex, currentHandIndex, isYouTubeMode, currentHand, steps]);
 
   // Background Music
@@ -509,6 +539,10 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     cancel(); // Stop TTS
 
     // Stop all SFX
+    if (shuffleTimeoutRef.current) {
+      clearTimeout(shuffleTimeoutRef.current);
+    }
+
     [shufflingCardsAudioRef, pokerChipsAudioRef, allInAudioRef, chaChingAudioRef].forEach(ref => {
       if (ref.current) {
         ref.current.pause();
@@ -926,6 +960,31 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               )}
 
               {isYouTubeMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('RAW TTS Toggle Clicked, current state:', disableTTSNormalization);
+                    handleToggleNormalization();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 cursor-pointer shrink-0"
+                  title="Disable poker notation transformation for TTS"
+                  style={{
+                    pointerEvents: 'auto',
+                    zIndex: 20,
+                    backgroundColor: disableTTSNormalization ? 'rgba(245, 158, 11, 0.25)' : 'rgba(30, 41, 59, 0.5)',
+                    border: `1px solid ${disableTTSNormalization ? 'rgba(245, 158, 11, 0.6)' : 'rgba(255, 255, 255, 0.1)'}`,
+                    boxShadow: disableTTSNormalization ? '0 0 15px rgba(245, 158, 11, 0.4)' : 'none',
+                    color: disableTTSNormalization ? '#fff' : '#94a3b8'
+                  }}
+                >
+                  <div className={`w-2.5 h-2.5 rounded-full transition-colors ${disableTTSNormalization ? 'bg-orange-500 shadow-[0_0_8px_#f59e0b]' : 'bg-slate-600'}`} />
+                  <span className="text-[10px] font-bold uppercase tracking-tighter">
+                    RAW TTS
+                  </span>
+                </button>
+              )}
+
+              {isYouTubeMode && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <input
                     type="text"
@@ -1013,6 +1072,23 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
                 </button>
               )}
 
+              {isYouTubeMode && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(30, 41, 59, 0.3)', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                  {(['elevenlabs', 'openai', 'native'] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => {
+                        setTtsProvider(p);
+                        localStorage.setItem('tts_provider', p);
+                      }}
+                      className={`text-[10px] font-bold px-2 py-1 rounded transition-all ${ttsProvider === p ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      {p.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {isYouTubeMode && (!openAIKey || !elevenLabsKey) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <input
@@ -1047,6 +1123,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
                   />
                 </div>
               )}
+
             </div>
           </div>
         </div>

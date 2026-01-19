@@ -39,4 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-pokerbench-web/src/data/runs/Local/*
+runs/Local/*
+pokerbench-web/src/data/runs/*

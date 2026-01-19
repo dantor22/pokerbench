@@ -4,12 +4,13 @@ interface UseTTSOptions {
   enabled: boolean;
   openAIKey?: string;
   elevenLabsKey?: string;
+  provider?: 'openai' | 'elevenlabs' | 'native';
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (error: any) => void;
 }
 
-export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onError }: UseTTSOptions) {
+export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, onEnd, onError }: UseTTSOptions) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [voiceName, setVoiceName] = useState<string>('');
@@ -79,8 +80,9 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
 
     cancel();
 
-    // 1. ElevenLabs TTS Strategy (Priority)
-    if (elevenLabsKey && options?.elevenLabsVoice) {
+    // 1. ElevenLabs TTS Strategy
+    const useElevenLabs = provider === 'elevenlabs' || (!provider && elevenLabsKey && options?.elevenLabsVoice);
+    if (useElevenLabs && elevenLabsKey && options?.elevenLabsVoice) {
       try {
         setIsActive(true);
         setIsLoading(true);
@@ -155,15 +157,23 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
         if (e.name === 'AbortError') {
           // Ignore
         } else {
-          console.error("ElevenLabs TTS Failed, falling back:", e);
+          console.error("ElevenLabs TTS Failed:", e);
+          // Only fallback if not explicitly requested
+          if (provider) {
+            setIsSpeaking(false);
+            setIsActive(false);
+            setIsLoading(false);
+            onError?.(e);
+            onEnd?.();
+            return;
+          }
         }
       }
-
-      // Fall through to OpenAI logic if we have a key, otherwise Native logic below
     }
 
     // 2. OpenAI TTS Strategy
-    if (openAIKey) {
+    const useOpenAI = provider === 'openai' || (!provider && openAIKey);
+    if (useOpenAI && openAIKey) {
       try {
         setIsActive(true); // Pause game immediately
         setIsLoading(true); // Signal buffering (can pause recorder)
@@ -237,18 +247,19 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
           // Ignore aborts
         } else {
           console.error("OpenAI TTS Failed:", e);
-          setIsSpeaking(false);
-          setIsActive(false);
-          setIsLoading(false);
-          onError?.(e);
-          onEnd?.();
+          if (provider) {
+            setIsSpeaking(false);
+            setIsActive(false);
+            setIsLoading(false);
+            onError?.(e);
+            onEnd?.();
+            return;
+          }
         }
       }
-      return;
     }
 
-    // 3. Native TTS Strategy (Fallback)
-    // 3. Native TTS Strategy (Fallback)
+    // 3. Native TTS Strategy (Fallback or explicit)
     if (!synthRef.current) return;
 
     try {
@@ -309,7 +320,7 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, onStart, onEnd, onEr
       onError?.(e);
       onEnd?.();
     }
-  }, [enabled, openAIKey, elevenLabsKey, cancel, onStart, onEnd, onError]);
+  }, [enabled, openAIKey, elevenLabsKey, provider, cancel, onStart, onEnd, onError]);
 
   return {
     speak,

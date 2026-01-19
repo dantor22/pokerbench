@@ -2,6 +2,7 @@
   "runs": [
     "Gemini_Flash_and_Pro_Heads_Up",
     "Large_Models",
+    "Local",
     "Small_Models"
   ],
   "games": {
@@ -72,6 +73,10 @@
       "f6c5e13a",
       "f81eee47",
       "feba63c1"
+    ],
+    "Local": [
+      "f971d86a",
+      "yt"
     ],
     "Small_Models": [
       "029cded8",

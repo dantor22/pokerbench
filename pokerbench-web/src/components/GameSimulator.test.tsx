@@ -329,4 +329,116 @@ describe('GameSimulator', () => {
     await user.click(prevStepBtn);
     expect(window.speechSynthesis.cancel).toHaveBeenCalled();
   });
+
+  it('limits shuffling sound to 4 seconds in YouTube mode', async () => {
+    vi.useFakeTimers();
+    const { fireEvent } = await import('@testing-library/react');
+
+    // Mock HTMLMediaElement properties
+    const pauseSpy = vi.spyOn(window.HTMLMediaElement.prototype, 'pause');
+    const playSpy = vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Activate YouTube mode via fireEvent for space/keys if needed, 
+    // but easiest is to just find the toggle if it's rendered, 
+    // or simulate the cheat code.
+    // Let's just simulate the keyboard event for the cheat code.
+    act(() => {
+      fireEvent.keyDown(window, { key: 'y' });
+      fireEvent.keyDown(window, { key: 't' });
+      fireEvent.keyDown(window, { key: ' ' });
+      fireEvent.keyDown(window, { key: 'm' });
+      fireEvent.keyDown(window, { key: 'o' });
+      fireEvent.keyDown(window, { key: 'd' });
+      fireEvent.keyDown(window, { key: 'e' });
+    });
+
+    const toggleBtn = screen.getByTitle('Toggle YouTube Generation Mode');
+    act(() => {
+      fireEvent.click(toggleBtn);
+    });
+
+    // Initial state Hand #1, Step 0 should trigger shuffle
+    expect(playSpy).toHaveBeenCalled();
+
+    pauseSpy.mockClear();
+
+    // Advance time by 4 seconds
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(pauseSpy).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('toggles TTS normalization and persists to localStorage', async () => {
+    const { userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Activate YouTube mode
+    await user.keyboard('yt mode');
+    const toggleModeBtn = screen.getByTitle('Toggle YouTube Generation Mode');
+    await user.click(toggleModeBtn);
+
+    // Find the RAW TTS toggle
+    const toggle = screen.getByTitle('Disable poker notation transformation for TTS');
+    expect(toggle).toBeInTheDocument();
+    expect(screen.getByText('RAW TTS')).toBeInTheDocument();
+
+    // Initially should have slate-600 indicator
+    const indicator = toggle.querySelector('.rounded-full');
+    expect(indicator).toHaveClass('bg-slate-600');
+
+    // Click to disable normalization
+    await user.click(toggle);
+
+    // Should now have orange-500 indicator
+    expect(indicator).toHaveClass('bg-orange-500');
+    expect(localStorage.getItem('disable_tts_normalization')).toBe('true');
+
+    // Click again to enable
+    await user.click(toggle);
+    expect(indicator).toHaveClass('bg-slate-600');
+    expect(localStorage.getItem('disable_tts_normalization')).toBe('false');
+  });
+
+  it('renders TTS provider toggle in YouTube mode', async () => {
+    const { userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Activate YouTube mode
+    await user.keyboard('yt mode');
+    const toggleBtn = screen.getByTitle('Toggle YouTube Generation Mode');
+    await user.click(toggleBtn);
+
+    expect(screen.getByText('ELEVENLABS')).toBeInTheDocument();
+    expect(screen.getByText('OPENAI')).toBeInTheDocument();
+    expect(screen.getByText('NATIVE')).toBeInTheDocument();
+  });
+
+  it('updates TTS provider and persists to localStorage', async () => {
+    const { userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Activate YouTube mode
+    await user.keyboard('yt mode');
+    const toggleBtn = screen.getByTitle('Toggle YouTube Generation Mode');
+    await user.click(toggleBtn);
+
+    const openaiBtn = screen.getByText('OPENAI');
+    await user.click(openaiBtn);
+
+    expect(localStorage.getItem('tts_provider')).toBe('openai');
+
+    // Check if button is active (has specific class)
+    expect(openaiBtn).toHaveClass('bg-blue-600');
+  });
 });
