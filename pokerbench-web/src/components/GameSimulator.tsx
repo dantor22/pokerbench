@@ -115,6 +115,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const videoRecorderRef = useRef<MediaRecorder | null>(null);
   const lastSpokenStepRef = useRef<string | null>(null); // Track last spoken "handId-stepIndex"
   const shuffleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const boardSFXTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   const currentHand = game.hands[currentHandIndex];
   const steps = useMemo(() => {
@@ -318,6 +319,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const pokerChipsAudioRef = useRef<HTMLAudioElement>(null);
   const allInAudioRef = useRef<HTMLAudioElement>(null);
   const chaChingAudioRef = useRef<HTMLAudioElement>(null);
+  const lightCardAudioRef = useRef<HTMLAudioElement>(null);
   const lastPlayedActionRef = useRef<string | null>(null);
 
   // SFX Effect
@@ -378,6 +380,52 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         chaChingAudioRef.current.volume = 0.4;
         chaChingAudioRef.current.currentTime = 0;
         chaChingAudioRef.current.play().catch(() => { });
+      }
+    }
+
+    // 4. Board events: light_card
+    if (action?.type === 'street_event') {
+      const playBoardSound = (repeats: number) => {
+        const audio = lightCardAudioRef.current;
+        if (!audio) return;
+
+        // Remove previous listeners
+        audio.ontimeupdate = null;
+
+        let played = 0;
+        const playOne = () => {
+          if (played >= repeats || !isYouTubeMode) return;
+
+          audio.pause();
+          audio.currentTime = 2.0; // Start at :01
+          audio.volume = 0.6;
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              // Rapid clicks (Flop) are clipped shorter (e.g. 300ms) to sound fast
+              // Turn/River (single) play a bit longer (~800ms) 
+              const duration = repeats > 1 ? 200 : 800;
+
+              const t1 = setTimeout(() => {
+                audio.pause();
+                played++;
+                if (played < repeats && isYouTubeMode) {
+                  const t2 = setTimeout(playOne, 20); // Gap between rapid clicks
+                  boardSFXTimeoutsRef.current.push(t2);
+                }
+              }, duration);
+              boardSFXTimeoutsRef.current.push(t1);
+            }).catch(() => { });
+          }
+        };
+        playOne();
+      };
+
+      if (action.street === 'FLOP') {
+        playBoardSound(3);
+      } else if (action.street === 'TURN' || action.street === 'RIVER') {
+        playBoardSound(1);
       }
     }
 
@@ -569,8 +617,10 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     if (shuffleTimeoutRef.current) {
       clearTimeout(shuffleTimeoutRef.current);
     }
+    boardSFXTimeoutsRef.current.forEach(clearTimeout);
+    boardSFXTimeoutsRef.current = [];
 
-    [shufflingCardsAudioRef, pokerChipsAudioRef, allInAudioRef, chaChingAudioRef].forEach(ref => {
+    [shufflingCardsAudioRef, pokerChipsAudioRef, allInAudioRef, chaChingAudioRef, lightCardAudioRef].forEach(ref => {
       if (ref.current) {
         ref.current.pause();
         ref.current.currentTime = 0;
@@ -762,13 +812,14 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       >
         <div className={`absolute top-4 left-4 z-10 select-none transition-opacity ${isRecording ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
           {/* Background Music Audio Element */}
-          <audio ref={audioRef} src="/on_the_flip.mp3" loop />
+          <audio ref={audioRef} src="/on_the_flip.mp3" loop preload="auto" />
 
           {/* SFX Audio Elements */}
-          <audio ref={shufflingCardsAudioRef} src="/shuffling_cards.mp3" />
-          <audio ref={pokerChipsAudioRef} src="/poker_chips_small.mp3" />
-          <audio ref={allInAudioRef} src="/allinpushchips.mp3" />
-          <audio ref={chaChingAudioRef} src="/register_cha_ching.mp3" />
+          <audio ref={shufflingCardsAudioRef} src="/shuffling_cards.mp3" preload="auto" />
+          <audio ref={pokerChipsAudioRef} src="/poker_chips_small.mp3" preload="auto" />
+          <audio ref={allInAudioRef} src="/allinpushchips.mp3" preload="auto" />
+          <audio ref={chaChingAudioRef} src="/register_cha_ching.mp3" preload="auto" />
+          <audio ref={lightCardAudioRef} src="/light_card.mp3" preload="auto" />
 
           <h2 className="text-2xl font-bold bg-black-50 px-2 rounded">Hand #{currentHand.hand_number}</h2>
           <div className="mt-2 space-y-1">

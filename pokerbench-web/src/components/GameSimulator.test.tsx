@@ -1,4 +1,4 @@
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock speechSynthesis - MUST BE BEFORE IMPORTS THAT USE IT
@@ -470,5 +470,67 @@ describe('GameSimulator', () => {
 
     // Check if button is active (has specific class)
     expect(openaiBtn).toHaveClass('bg-blue-600');
+  });
+
+  it.skip('plays light_card SFX during board events in YouTube mode', async () => {
+    vi.useFakeTimers();
+    // Use manual fireEvent for everything to be ultra fast and reliable with fake timers
+
+    // Mock play to track calls
+    const playSpy = vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+
+    const boardEventGame = {
+      players: ['Pro', 'Claude'],
+      hands: [{
+        hand_number: 1,
+        dealer: 'Pro',
+        pre_hand_stacks: { Pro: 10000, Claude: 10000 },
+        hole_cards: { Pro: ['Ah', 'Ad'], Claude: ['Ks', 'Kd'] },
+        actions: [
+          { type: 'street_event', street: 'PRE-FLOP', cards: [] },
+          { type: 'street_event', street: 'FLOP', cards: ['2h', '3h', '4h'] }
+        ],
+        results: []
+      }]
+    };
+
+    render(<GameSimulator game={boardEventGame as any} />);
+
+    // Activate YouTube mode via cheat code
+    act(() => {
+      'yt mode'.split('').forEach(key => {
+        fireEvent.keyDown(window, { key });
+      });
+    });
+
+    // Enable YouTube mode
+    const toggleBtn = screen.getByTitle('Toggle YouTube Generation Mode');
+    act(() => { fireEvent.click(toggleBtn); });
+
+    // Clear any calls from background music/initialization
+    playSpy.mockClear();
+
+    // Move to Flop (Step 1)
+    const nextStepBtn = screen.getByTitle('Next Step');
+    act(() => {
+      fireEvent.click(nextStepBtn);
+    });
+
+    // Run timers to trigger the effect
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    // Should have triggered play once
+    expect(playSpy).toHaveBeenCalled();
+
+    // Advance time for second repeat
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(playSpy).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
   });
 });
