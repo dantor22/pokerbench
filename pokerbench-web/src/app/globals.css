@@ -1390,3 +1390,59 @@ button:hover {
   background: black;
   z-index: 10;
 }
+/* Closed Caption Styles */
+.cc-overlay {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96%;
+  max-width: 1600px;
+  min-height: 100px;
+  background-color: rgba(0, 0, 0, 0.50);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  padding: 1rem 2.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  pointer-events: none;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+
+
+
+.cc-header {
+  color: #f59e0b;
+  font-size: 11px;
+  font-weight: 900;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.cc-header-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #f59e0b;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #f59e0b;
+}
+
+.cc-text {
+  color: white;
+  line-height: 1.4;
+  font-size: 26px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

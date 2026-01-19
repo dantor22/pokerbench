@@ -123,7 +123,8 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   }, [currentHand]);
 
   // TTS Hook
-  const { speak, cancel, isSpeaking, isActive: isTTSActive, isLoading: isTTSLoading, voiceName } = useTTS({
+  const { speak, cancel, isSpeaking, isActive: isTTSActive, isLoading: isTTSLoading, voiceName, currentCharIndex } = useTTS({
+
     enabled: isYouTubeMode,
     openAIKey: openAIKey,
     elevenLabsKey: elevenLabsKey,
@@ -869,7 +870,9 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
           isVisible={isYouTubeMode}
           thought={gameState.players.find(p => p.thought)?.thought || ''}
           playerName={gameState.players.find(p => p.thought)?.displayName || gameState.players.find(p => p.thought)?.name}
+          currentCharIndex={currentCharIndex}
         />
+
       </div>
 
       <div className={`layout-split mb-0 transition-all duration-500 gap-2 ${isRecording ? 'opacity-0 h-0 overflow-hidden m-0' : 'opacity-100'}`}>

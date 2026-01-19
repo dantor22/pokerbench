@@ -15,6 +15,8 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
   const [isActive, setIsActive] = useState(false);
   const [voiceName, setVoiceName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentCharIndex, setCurrentCharIndex] = useState(0);
+
 
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -51,7 +53,9 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
     setIsSpeaking(false);
     setIsActive(false);
     setIsLoading(false);
+    setCurrentCharIndex(0);
   }, []);
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -139,8 +143,17 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
           setIsLoading(false);
           setIsSpeaking(true);
           onStart?.();
+
+          audio.ontimeupdate = () => {
+            if (audio.duration) {
+              const progress = audio.currentTime / audio.duration;
+              setCurrentCharIndex(Math.floor(text.length * progress));
+            }
+          };
+
           audio.play();
         };
+
 
         audio.onended = () => {
           setIsSpeaking(false);
@@ -228,8 +241,17 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
           setIsSpeaking(true); // Start Speaking
 
           onStart?.();
+
+          audio.ontimeupdate = () => {
+            if (audio.duration) {
+              const progress = audio.currentTime / audio.duration;
+              setCurrentCharIndex(Math.floor(text.length * progress));
+            }
+          };
+
           audio.play();
         };
+
 
         audio.onended = () => {
           setIsSpeaking(false);
@@ -326,7 +348,14 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
           }
         };
 
+        utterance.onboundary = (event) => {
+          if (event.name === 'word') {
+            setCurrentCharIndex(event.charIndex);
+          }
+        };
+
         synthRef.current.speak(utterance);
+
       }, 50);
 
     } catch (e) {
@@ -342,6 +371,8 @@ export function useTTS({ enabled, openAIKey, elevenLabsKey, provider, onStart, o
     isSpeaking,
     isActive,
     isLoading,
-    voiceName
+    voiceName,
+    currentCharIndex
   };
 }
+
