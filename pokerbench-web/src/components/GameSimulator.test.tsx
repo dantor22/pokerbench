@@ -533,4 +533,22 @@ describe('GameSimulator', () => {
 
     vi.useRealTimers();
   });
+
+  it('handles camera movement state from PokerScene', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    render(<GameSimulator game={mockGame as any} />);
+
+    // Get the onCameraMoveChange prop passed to PokerScene
+    const lastCall = mockPokerSceneProps.mock.calls[mockPokerSceneProps.mock.calls.length - 1][0];
+    expect(lastCall.onCameraMoveChange).toBeDefined();
+
+    // Trigger camera movement
+    act(() => {
+      lastCall.onCameraMoveChange(true);
+    });
+
+    // We can't easily check the internal state isCameraMoving without more complex exposure 
+    // or checking the effect's side effects.
+    // But we've verified the wiring.
+  });
 });

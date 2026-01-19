@@ -67,6 +67,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [sceneReady, setSceneReady] = useState(false);
   const [winProbabilities, setWinProbabilities] = useState<(number | null)[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isCameraMoving, setIsCameraMoving] = useState(false);
 
   // YouTube Mode State
   const [isYouTubeMode, setIsYouTubeMode] = useState(false);
@@ -131,8 +132,15 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     provider: ttsProvider,
     onEnd: () => {
       // Resume playback logic handled in tick
+      ttsInitiatedRef.current = false;
+    },
+    onError: () => {
+      ttsInitiatedRef.current = false;
     }
   });
+
+  // Race condition fix: Track if we just called speak() but isTTSLoading/isActive hasn't updated yet
+  const ttsInitiatedRef = useRef(false);
 
   const stateRef = useRef({
     currentStepIndex,
@@ -143,8 +151,18 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     isTTSLoading,
     isYouTubeMode,
     isQueueRecording,
-    handQueue
+    handQueue,
+    isCameraMoving,
+    isThoughtPending: false // Initialize
   }); // keep ref in sync
+
+  const currentHandIdForPredictive = currentHand?.hand_number || currentHandIndex;
+  const stepKeyForPredictive = `${currentHandIdForPredictive}-${currentStepIndex}`;
+  const activeActionForPredictive = steps[currentStepIndex];
+  const isThoughtPending = !!(isYouTubeMode &&
+    activeActionForPredictive?.type === 'player_action' &&
+    activeActionForPredictive.thought &&
+    lastSpokenStepRef.current !== stepKeyForPredictive);
 
   // Update ref when state changes
   useEffect(() => {
@@ -157,23 +175,28 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       isTTSLoading,
       isYouTubeMode,
       isQueueRecording,
-      handQueue
+      handQueue,
+      isCameraMoving,
+      isThoughtPending
     };
-  }, [currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode, isQueueRecording, handQueue]);
+  }, [currentStepIndex, steps, currentHandIndex, game, isTTSActive, isTTSLoading, isYouTubeMode, isQueueRecording, handQueue, isCameraMoving, isThoughtPending]);
 
   // SMART RECORDER PAUSE: Edit out latency!
   useEffect(() => {
     if (!isRecording || !videoRecorderRef.current) return;
 
-    // If TTS is buffering, PAUSE recording to skip the silence
-    if (isTTSLoading && videoRecorderRef.current.state === 'recording') {
+    // If TTS is buffering OR about to speak (predictive pause), PAUSE recording to skip the silence
+    // BUT only if the camera is NOT moving. If camera is moving, we want to see the transition.
+    const shouldPause = (isTTSLoading || isThoughtPending) && !isCameraMoving;
+
+    if (shouldPause && videoRecorderRef.current.state === 'recording') {
       videoRecorderRef.current.pause();
     }
-    // When buffer finishes, RESUME recording
-    else if (!isTTSLoading && videoRecorderRef.current.state === 'paused') {
+    // When buffer finishes OR camera starts moving, RESUME recording
+    else if (!shouldPause && videoRecorderRef.current.state === 'paused') {
       videoRecorderRef.current.resume();
     }
-  }, [isTTSLoading, isRecording]);
+  }, [isTTSLoading, isThoughtPending, isRecording, isCameraMoving]);
 
   const useTTSResult = { voiceName }; // Helper for the render block below where I couldn't easily change variable scope logic without bigger diffs
 
@@ -306,6 +329,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
       const transformedThought = disableTTSNormalization ? activePlayer.thought : transformPokerThoughts(activePlayer.thought);
 
+      ttsInitiatedRef.current = true;
       speak(transformedThought, {
         voice: modelConfig.voice,
         elevenLabsVoice: modelConfig.elevenLabsVoice,
@@ -442,7 +466,15 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (isYouTubeMode && !isTTSLoading) {
+    // MUSIC PAUSE LOGIC: 
+    // 1. If not in YouTube mode, stop music.
+    // 2. If recording: Pause music only when the recorder itself is paused (TTS loading AND camera settled).
+    //    This ensures the audio track maintains continuity when we "edit out" the latency in the final video.
+    // 3. If NOT recording: Keep music playing seamlessly (even if TTS is loading) so the user doesn't hear gaps.
+
+    const shouldPause = isYouTubeMode && isRecording && (isTTSLoading || isThoughtPending) && !isCameraMoving;
+
+    if (isYouTubeMode && !shouldPause) {
       audio.volume = 0.05; // Low background volume
       const playPromise = audio.play();
       if (playPromise !== undefined) {
@@ -456,7 +488,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         audio.currentTime = 0;
       }
     }
-  }, [isYouTubeMode, isTTSLoading]);
+  }, [isYouTubeMode, isTTSLoading, isThoughtPending, isRecording, isCameraMoving]);
 
   // Calculate win probabilities lazily to not lag the simulation
   // Calculate win probabilities via Web Worker
@@ -564,7 +596,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
       // Use closure scope for isTTSActive/isTTSLoading to ensure we have the most up-to-date values 
       // from the current render cycle when being called by the interval
       if (isYouTubeMode) {
-        if (isTTSActive || isTTSLoading) return;
+        if (isTTSActive || isTTSLoading || ttsInitiatedRef.current) return;
 
         // If current step has a thought we haven't spoken yet, wait for the effect to trigger speak()
         const activeAction = steps[currentStepIndex];
@@ -862,6 +894,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
               onZoomChange={setZoom}
               onSceneReady={() => setSceneReady(true)}
               isYouTubeMode={isYouTubeMode}
+              onCameraMoveChange={setIsCameraMoving}
             />
           </Canvas>
         </Suspense>

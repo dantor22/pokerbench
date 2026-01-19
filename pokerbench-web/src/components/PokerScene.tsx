@@ -35,6 +35,7 @@ interface PokerSceneProps {
   pot: number;
   dealerIndex: number;
   isYouTubeMode?: boolean;
+  onCameraMoveChange?: (isMoving: boolean) => void;
 }
 
 const PlayerGroup = memo(({ data, index, totalPlayers, tableScale, isYouTubeMode }: { data: PlayerState; index: number; totalPlayers: number; tableScale: number; isYouTubeMode?: boolean }) => {
@@ -235,7 +236,7 @@ const PlayerGroup = memo(({ data, index, totalPlayers, tableScale, isYouTubeMode
   );
 });
 
-export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange, onSceneReady, isYouTubeMode }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void; onSceneReady?: () => void }) {
+export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel, onZoomChange, onSceneReady, isYouTubeMode, onCameraMoveChange }: PokerSceneProps & { zoomLevel: number; onZoomChange: (z: number) => void; onSceneReady?: () => void }) {
   const potBadgeRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
@@ -280,6 +281,7 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
   const panOffset = useRef(new THREE.Vector3(0, 0, 0));
   const isInteracting = useRef(false);
   const lastTarget = useRef(new THREE.Vector3(0, 0, 0));
+  const isMovingRef = useRef(false);
 
   // Reset pan offset when entering YT mode or starting a new hand (if desired)
   useEffect(() => {
@@ -320,20 +322,35 @@ export default function PokerScene({ players, board, pot, dealerIndex, zoomLevel
 
   useFrame((state, delta) => {
     if (isYouTubeMode && controlsRef.current) {
-      // Don't fight the user if they are currently panning
-      if (isInteracting.current) return;
-
       // Smoothly interpolate camera position and controls target
       // Lerp factor ~3.0 gives roughly 1s transition
       const step = 3.0 * delta;
 
-      // Apply any manual pan offset to the cinematic positions
       const finalCameraPos = desiredCameraPos.current.clone().add(panOffset.current);
       const finalTarget = desiredTarget.current.clone().add(panOffset.current);
 
-      state.camera.position.lerp(finalCameraPos, step);
-      controlsRef.current.target.lerp(finalTarget, step);
-      controlsRef.current.update();
+      const oldPos = state.camera.position.clone();
+      const oldTarget = controlsRef.current.target.clone();
+
+      // Don't fight the user if they are currently panning
+      if (!isInteracting.current) {
+        state.camera.position.lerp(finalCameraPos, step);
+        controlsRef.current.target.lerp(finalTarget, step);
+        controlsRef.current.update();
+      }
+
+      // Detection
+      const posMoved = oldPos.distanceTo(state.camera.position);
+      const targetMoved = oldTarget.distanceTo(controlsRef.current.target);
+
+      // If we moved more than a tiny bit, it's "moving"
+      // Threshold 0.01 is snappier for "settled" than 0.001
+      const isMovingNow = posMoved > 0.01 || targetMoved > 0.01;
+
+      if (isMovingNow !== isMovingRef.current) {
+        isMovingRef.current = isMovingNow;
+        onCameraMoveChange?.(isMovingNow);
+      }
     }
   });
 
