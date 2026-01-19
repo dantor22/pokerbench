@@ -63,6 +63,16 @@ describe('GameSimulator', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default Worker mock for all tests
+    class MockWorker {
+      postMessage = vi.fn();
+      terminate = vi.fn();
+      onmessage = null;
+      onerror = null;
+    }
+    // @ts-ignore
+    window.Worker = MockWorker;
   });
 
   it('renders hand number and dealer info', () => {
@@ -84,7 +94,19 @@ describe('GameSimulator', () => {
 
   it('calculates win probabilities lazily', async () => {
     vi.useFakeTimers();
-    mockCalculate.mockReturnValue([80, 20]);
+
+    // Mock Worker instance capture
+    let capturedWorker: any;
+    // @ts-ignore
+    window.Worker = class MockWorker {
+      constructor() {
+        capturedWorker = this;
+      }
+      postMessage = vi.fn();
+      terminate = vi.fn();
+      onmessage = null;
+      onerror = null;
+    };
 
     render(<GameSimulator game={mockGame as any} />);
 
@@ -92,13 +114,21 @@ describe('GameSimulator', () => {
     const initialProps = mockPokerSceneProps.mock.calls[0][0];
     expect(initialProps.players[0].winProbability).toBe(null);
 
-    // Advance time to trigger lazy calculation
+    // Advance time to trigger delayed worker creation
     act(() => {
       vi.runAllTimers();
     });
 
-    // Check if calculate was called
-    expect(mockCalculate).toHaveBeenCalled();
+    // Check if worker was instantiated and captured
+    expect(capturedWorker).toBeDefined();
+    expect(capturedWorker.postMessage).toHaveBeenCalled();
+
+    // Simulate worker response
+    act(() => {
+      if (capturedWorker.onmessage) {
+        capturedWorker.onmessage({ data: { type: 'success', result: [80, 20] } } as MessageEvent);
+      }
+    });
 
     // Check props
     const lastProps = mockPokerSceneProps.mock.calls[mockPokerSceneProps.mock.calls.length - 1][0];

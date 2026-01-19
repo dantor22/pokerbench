@@ -11,7 +11,7 @@ import { Play, Pause, SkipForward, SkipBack, FastForward, Rewind, ZoomIn, ZoomOu
 import GameTimeline from './GameTimeline';
 import StackSizeChart from './StackSizeChart';
 import GameStats from './GameStats';
-import { calculateWinProbabilities } from '../lib/poker-engine';
+// import { calculateWinProbabilities } from '../lib/poker-engine'; // Removed synchronous import
 import { useTTS } from '../lib/hooks/useTTS';
 import { transformPokerThoughts } from '../lib/poker-tts-utils';
 
@@ -410,6 +410,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   }, [isYouTubeMode, isTTSLoading]);
 
   // Calculate win probabilities lazily to not lag the simulation
+  // Calculate win probabilities via Web Worker
   useEffect(() => {
     setWinProbabilities([]);
 
@@ -420,19 +421,45 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
     }
 
     setIsCalculating(true);
+
+    // Create worker only when needed, or keep it persistent. Persistent is better for repeated small tasks.
+    // For simplicity and to correctly handle HMR/Next.js, we'll instantiate ref inside the effect or component.
+    // Using a ref for the worker to ensure we don't spawn too many.
+    const worker = new Worker(new URL('../lib/workers/pokerCalculator.worker.ts', import.meta.url));
+
+    worker.onmessage = (e) => {
+      if (e.data.type === 'success') {
+        setWinProbabilities(e.data.result);
+      }
+      setIsCalculating(false);
+      worker.terminate(); // Terminate after one-shot for safety, or keep alive if optimizing for frequent runs
+    };
+
+    worker.onerror = (e) => {
+      console.error('Worker error:', e);
+      setIsCalculating(false);
+      worker.terminate();
+    };
+
+    // Small delay to allow UI to settle/render first
     const timer = setTimeout(() => {
       const { players, board } = gameState;
       if (players.length === 0) {
         setIsCalculating(false);
+        worker.terminate();
         return;
       }
 
-      const result = calculateWinProbabilities(players, board);
-      setWinProbabilities(result);
-      setIsCalculating(false);
+      // Send data to worker (must be serializable)
+      // Players contains simple data, so it's fine.
+      worker.postMessage({ players, board });
+
     }, isPlaying ? 200 : 50);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      worker.terminate();
+    };
   }, [gameState.players, gameState.board, isPlaying]);
 
   // Merge win probabilities into game state for the scene
