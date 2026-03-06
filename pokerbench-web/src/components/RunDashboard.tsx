@@ -353,6 +353,7 @@ export default function RunDashboard({ summary, gameIds, runs, runId, totalGames
                           href={`${basePath}/game/${gameId}`}
                           className="text-slate-500 group-hover:text-blue-400 flex items-center justify-center"
                           style={{ height: '26px', width: '20px' }}
+                          prefetch={false}
                         >
                           <ArrowRight className="w-4 h-4" />
                         </Link>
