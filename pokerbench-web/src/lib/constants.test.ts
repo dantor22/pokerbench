@@ -5,6 +5,8 @@ describe('constants', () => {
   describe('formatModelName', () => {
     it('should format known model names correctly', () => {
       expect(formatModelName('Pro')).toBe('Gemini 3 Pro');
+      expect(formatModelName('Pro', 'Latest_Gemini_Models')).toBe('Gemini 3.1 Pro');
+      expect(formatModelName('Flashlight', 'Latest_Gemini_Models')).toBe('Gemini 3.1 Flash Lite');
       expect(formatModelName('Claude')).toBe('Opus 4.5');
       expect(formatModelName('Claude', 'Small_Models')).toBe('Haiku 4.5');
     });
@@ -15,12 +17,14 @@ describe('constants', () => {
 
     it('should handle lowercase fallbacks', () => {
       expect(formatModelName('pro')).toBe('Gemini 3 Pro');
+      expect(formatModelName('pro', 'Latest_Gemini_Models')).toBe('Gemini 3.1 Pro');
     });
   });
 
   describe('getModelColor', () => {
     it('should return the correct color for known models', () => {
       expect(getModelColor('Pro')).toBe('#3b82f6');
+      expect(getModelColor('Flashlight')).toBe('#60a5fa');
       expect(getModelColor('Elon')).toBe('#22d3ee');
     });
 
@@ -53,7 +57,7 @@ describe('constants', () => {
 
   describe('MODEL_NAME_MAPPING', () => {
     it('should have all expected models', () => {
-      const expectedKeys = ['Pro', 'Minni', 'Claude', 'FiveTwo', 'Elon', 'Flash'];
+      const expectedKeys = ['Pro', 'Minni', 'Claude', 'FiveTwo', 'Elon', 'Flash', 'Flashlight'];
       expectedKeys.forEach(key => {
         expect(MODEL_NAME_MAPPING).toHaveProperty(key);
       });

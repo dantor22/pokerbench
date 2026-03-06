@@ -78,6 +78,19 @@ function calculateHandStats(hand, playerStats) {
   cBetOpps.forEach(p => playerStats[p].cBetOpp++);
 }
 
+function findGameFiles(dir, allFiles = []) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      findGameFiles(fullPath, allFiles);
+    } else if (entry.name.startsWith('game_') && entry.name.endsWith('.json')) {
+      allFiles.push(fullPath);
+    }
+  }
+  return allFiles;
+}
+
 function computeStats(runPath) {
   const summaryPath = path.join(runPath, 'summary.json');
   if (!fs.existsSync(summaryPath)) {
@@ -86,8 +99,7 @@ function computeStats(runPath) {
   }
 
   const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-  const files = fs.readdirSync(runPath);
-  const gameFiles = files.filter(f => f.startsWith('game_') && f.endsWith('.json'));
+  const gameFiles = findGameFiles(runPath);
 
   const profitsMap = {};
   const stacksMap = {};
@@ -103,8 +115,8 @@ function computeStats(runPath) {
     });
   }
 
-  gameFiles.forEach(gameFile => {
-    const gamePath = path.join(runPath, gameFile);
+  gameFiles.forEach(gamePath => {
+    const gameFile = path.basename(gamePath);
     let game;
     try {
       game = JSON.parse(fs.readFileSync(gamePath, 'utf8'));

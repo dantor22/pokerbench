@@ -19,6 +19,19 @@ ensureDir(DEST_DIR);
 ensureDir(path.dirname(MANIFEST_PATH));
 ensureDir(path.dirname(PUBLIC_MANIFEST_PATH));
 
+function findGameFiles(dir, allFiles = []) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      findGameFiles(fullPath, allFiles);
+    } else if (entry.name.startsWith('game_') && entry.name.endsWith('.json')) {
+      allFiles.push(fullPath);
+    }
+  }
+  return allFiles;
+}
+
 function copyDir(src, dest) {
   ensureDir(dest);
   const entries = fs.readdirSync(src, { withFileTypes: true });
@@ -74,10 +87,11 @@ try {
       console.error(`Failed to compute stats for ${runId}:`, e);
     }
 
-    const files = fs.readdirSync(runPath);
-    const gameIds = files
-      .filter(f => f.startsWith('game_') && f.endsWith('.json'))
-      .map(f => f.replace('game_', '').replace('.json', ''));
+    const gameFiles = findGameFiles(runPath);
+    const gameIds = gameFiles.map(f => {
+      const basename = path.basename(f);
+      return basename.replace('game_', '').replace('.json', '');
+    });
     
     manifest.games[runId] = gameIds;
   }
