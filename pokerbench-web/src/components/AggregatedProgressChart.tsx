@@ -179,7 +179,7 @@ export default function AggregatedProgressChart({
         </div>
       </div>
       
-      <div style={{ width: '100%', height: 400 }} className="select-none">
+      <div style={{ width: '100%', height: 400, minWidth: 0 }} className="select-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <ComposedChart
             data={filteredChartData}
