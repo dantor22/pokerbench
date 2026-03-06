@@ -90,7 +90,17 @@ try {
     const gameFiles = findGameFiles(runPath);
     const gameIds = gameFiles.map(f => {
       const basename = path.basename(f);
-      return basename.replace('game_', '').replace('.json', '');
+      const gameId = basename.replace('game_', '').replace('.json', '');
+
+      // Flattening: If the file is not already in the runPath root, move/copy it there
+      const destPath = path.join(runPath, basename);
+      if (f !== destPath) {
+        fs.copyFileSync(f, destPath);
+        // We leave the original nested file there as it was already copied by copyDir, 
+        // but it doesn't hurt. The key is it's now also in the root.
+      }
+
+      return gameId;
     });
     
     manifest.games[runId] = gameIds;
