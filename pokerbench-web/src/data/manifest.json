@@ -1,13 +1,13 @@
 {
   "runs": [
-    "Gemini_Flash_and_Pro_Heads_Up",
+    "Gemini_3_Flash_and_Pro_Heads_Up",
     "Large_Models",
     "Latest_Gemini_Models",
     "Local",
     "Small_Models"
   ],
   "games": {
-    "Gemini_Flash_and_Pro_Heads_Up": [
+    "Gemini_3_Flash_and_Pro_Heads_Up": [
       "0a16257d",
       "0d69a647",
       "120d0c87",
