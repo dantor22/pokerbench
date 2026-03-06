@@ -1,8 +1,8 @@
 {
   "runs": [
     "Gemini_3_Flash_and_Pro_Heads_Up",
+    "Gemini_Models",
     "Large_Models",
-    "Latest_Gemini_Models",
     "Local",
     "Small_Models"
   ],
@@ -59,23 +59,7 @@
       "ea323e26",
       "ec1c7360"
     ],
-    "Large_Models": [
-      "10f30327",
-      "214069a1",
-      "2a58900d",
-      "41614a6b",
-      "5cc39e35",
-      "980b1cbd",
-      "9b71cd97",
-      "a833f954",
-      "edb7d61f",
-      "f0551e8f",
-      "f1ef65bb",
-      "f6c5e13a",
-      "f81eee47",
-      "feba63c1"
-    ],
-    "Latest_Gemini_Models": [
+    "Gemini_Models": [
       "04dd9358",
       "0aff312a",
       "0ef56ec4",
@@ -147,6 +131,22 @@
       "f35976c1",
       "f8d7a661",
       "ffa9603c"
+    ],
+    "Large_Models": [
+      "10f30327",
+      "214069a1",
+      "2a58900d",
+      "41614a6b",
+      "5cc39e35",
+      "980b1cbd",
+      "9b71cd97",
+      "a833f954",
+      "edb7d61f",
+      "f0551e8f",
+      "f1ef65bb",
+      "f6c5e13a",
+      "f81eee47",
+      "feba63c1"
     ],
     "Local": [
       "f971d86a",

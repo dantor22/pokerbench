@@ -20,6 +20,9 @@ export default function RunSelector({ runs, currentRunId }: RunSelectorProps) {
     }
   };
 
+  const benchmarkRuns = runs.filter(r => r !== 'Gemini_3_Flash_and_Pro_Heads_Up');
+  const headsUpRuns = runs.filter(r => r === 'Gemini_3_Flash_and_Pro_Heads_Up');
+
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs font-bold text-slate-400 tracking-wider">RUN:</span>
@@ -29,11 +32,26 @@ export default function RunSelector({ runs, currentRunId }: RunSelectorProps) {
           onChange={handleChange}
           className="run-selector-select"
         >
-          {runs.map((run) => (
-            <option key={run} value={run} style={{ background: '#0f172a' }}>
-              {run.replace(/_/g, ' ')}
-            </option>
-          ))}
+          {benchmarkRuns.length > 0 && (
+            <optgroup label="Latest" style={{ background: '#0f172a', color: '#94a3b8', fontSize: '10px' }}>
+              {benchmarkRuns.map((run) => (
+                <option key={run} value={run} style={{ background: '#0f172a', color: 'white', fontSize: '14px' }}>
+                  {run.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {headsUpRuns.length > 0 && (
+            <>
+              <optgroup label="Outdated" style={{ background: '#0f172a', color: '#94a3b8', fontSize: '10px' }}>
+                {headsUpRuns.map((run) => (
+                  <option key={run} value={run} style={{ background: '#0f172a', color: 'white', fontSize: '14px' }}>
+                    {run.replace(/_/g, ' ')}
+                  </option>
+                ))}
+              </optgroup>
+            </>
+          )}
         </select>
         <ChevronDown 
           size={16} 

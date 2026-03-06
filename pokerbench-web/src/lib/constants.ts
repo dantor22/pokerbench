@@ -20,7 +20,7 @@ export const MODEL_NAME_MAPPING: Record<string, string> = {
 };
 
 export const RUN_MODEL_NAME_MAPPINGS: Record<string, Record<string, string>> = {
-  "Latest_Gemini_Models": {
+  "Gemini_Models": {
     "Pro": "Gemini 3.1 Pro",
     "Flashlight": "Gemini 3.1 Flash Lite",
     "pro": "Gemini 3.1 Pro",

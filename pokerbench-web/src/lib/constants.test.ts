@@ -5,8 +5,8 @@ describe('constants', () => {
   describe('formatModelName', () => {
     it('should format known model names correctly', () => {
       expect(formatModelName('Pro')).toBe('Gemini 3 Pro');
-      expect(formatModelName('Pro', 'Latest_Gemini_Models')).toBe('Gemini 3.1 Pro');
-      expect(formatModelName('Flashlight', 'Latest_Gemini_Models')).toBe('Gemini 3.1 Flash Lite');
+      expect(formatModelName('Pro', 'Gemini_Models')).toBe('Gemini 3.1 Pro');
+      expect(formatModelName('Flashlight', 'Gemini_Models')).toBe('Gemini 3.1 Flash Lite');
       expect(formatModelName('Claude')).toBe('Opus 4.5');
       expect(formatModelName('Claude', 'Small_Models')).toBe('Haiku 4.5');
     });
@@ -17,7 +17,7 @@ describe('constants', () => {
 
     it('should handle lowercase fallbacks', () => {
       expect(formatModelName('pro')).toBe('Gemini 3 Pro');
-      expect(formatModelName('pro', 'Latest_Gemini_Models')).toBe('Gemini 3.1 Pro');
+      expect(formatModelName('pro', 'Gemini_Models')).toBe('Gemini 3.1 Pro');
     });
   });
 
